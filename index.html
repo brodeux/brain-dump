@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>braindump.</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #131316;
+    --surface2: #1a1a1f;
+    --border: #222228;
+    --border2: #2e2e38;
+    --text: #e8e6e1;
+    --text-dim: #6b6875;
+    --text-muted: #3d3b45;
+    --star: #c9a84c;
+    --accent: #7b68ee;
+    --recur: #4a9e7a;
+    --recur-bg: #0d1a14;
+    --recur-border: #1a3028;
+    --done: #2a2a32;
+    --done-text: #444450;
+    --red: #8b4a4a;
+    --red-soft: #1f1010;
+    --red-border: #3a1a1a;
+    --green: #4a9e7a;
+    --green-soft: #0d1a14;
+    --green-border: #1a3028;
+    --budget: #e07b54;
+    --budget-bg: #1a1008;
+    --budget-border: #3a2010;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 20px 120px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .container { width: 100%; max-width: 660px; position: relative; z-index: 1; }
+
+  header { margin-bottom: 44px; animation: fadeDown 0.6s ease both; }
+
+  .logo { font-family: 'Instrument Serif', serif; font-size: 2.8rem; font-style: italic; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
+  .logo span { color: var(--accent); }
+  .tagline { margin-top: 8px; font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; }
+
+  .stats { display: flex; gap: 20px; margin-top: 20px; font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.08em; flex-wrap: wrap; }
+  .stat-val { color: var(--text-dim); }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 28px;
+    animation: fadeDown 0.6s 0.05s ease both;
+    gap: 2px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 9px 8px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover { color: var(--text-dim); }
+  .tab-btn.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Focus banner ── */
+  .focus-banner { background: #0f0d08; border: 1px solid #2a2415; border-radius: 12px; padding: 18px 22px; margin-bottom: 24px; display: none; animation: fadeDown 0.3s ease both; }
+  .focus-banner.visible { display: block; }
+  .focus-label { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--star); margin-bottom: 6px; opacity: 0.7; }
+  .focus-task { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.35rem; color: var(--text); line-height: 1.3; }
+  .focus-hint { font-size: 0.62rem; color: var(--text-muted); margin-top: 6px; letter-spacing: 0.06em; }
+
+  /* ── Today strip ── */
+  .today-strip { background: var(--recur-bg); border: 1px solid var(--recur-border); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: none; }
+  .today-strip.visible { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .today-strip-label { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--recur); white-space: nowrap; }
+  .today-strip-tasks { font-size: 0.72rem; color: var(--text-dim); flex: 1; text-align: right; }
+
+  /* ── Input zone ── */
+  .input-zone { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; transition: border-color 0.2s; animation: fadeDown 0.6s 0.1s ease both; }
+  .input-zone:focus-within { border-color: var(--border2); }
+  .input-zone input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.82rem; padding: 12px 12px; letter-spacing: 0.01em; }
+  .input-zone input::placeholder { color: var(--text-muted); }
+
+  .add-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em; padding: 9px 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s; white-space: nowrap; margin-right: 4px; }
+  .add-btn:hover { background: var(--border2); color: var(--text); }
+
+  /* ── Recurring input panel ── */
+  .recur-input-panel { background: var(--recur-bg); border: 1px solid var(--recur-border); border-radius: 12px; padding: 16px 18px; margin-bottom: 20px; animation: fadeDown 0.25s ease both; }
+  .recur-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .recur-input-panel input[type="text"], .recur-input-panel input[type="time"], .recur-input-panel select { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.76rem; padding: 8px 12px; border-radius: 8px; outline: none; transition: border-color 0.15s; color-scheme: dark; }
+  .recur-input-panel input[type="text"] { flex: 1; min-width: 140px; }
+  .recur-input-panel input:focus, .recur-input-panel select:focus { border-color: var(--recur); }
+  .recur-input-panel select option { background: #1a1a1f; }
+  .recur-add-btn { background: var(--recur); border: none; color: #071410; font-family: 'DM Mono', monospace; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; padding: 9px 18px; border-radius: 8px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .recur-add-btn:hover { filter: brightness(1.1); }
+  .recur-hint { font-size: 0.6rem; color: var(--text-muted); margin-top: 10px; letter-spacing: 0.06em; }
+
+  /* ── Filters ── */
+  .filters { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; animation: fadeDown 0.6s 0.15s ease both; }
+  .filter-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); font-family: 'DM Mono', monospace; font-size: 0.63rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: all 0.15s; }
+  .filter-btn:hover { color: var(--text-dim); border-color: var(--border2); }
+  .filter-btn.active { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+
+  /* ── Section label ── */
+  .section-label { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; margin-top: 28px; padding-left: 2px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── Task/Recur list ── */
+  .task-list, .recur-list { display: flex; flex-direction: column; gap: 4px; animation: fadeDown 0.6s 0.2s ease both; }
+
+  /* ── Task item ── */
+  .task-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; display: flex; align-items: flex-start; gap: 12px; cursor: default; transition: border-color 0.15s, background 0.2s, opacity 0.3s; position: relative; animation: slideIn 0.3s ease both; }
+  .task-item:hover { border-color: var(--border2); }
+  .task-item.done { background: var(--done); border-color: transparent; opacity: 0.45; }
+  .task-item.starred:not(.recurring) { border-color: #2a2415; background: #161410; }
+  .task-item.recurring { border-color: var(--recur-border); background: var(--recur-bg); }
+  .task-item.recurring.starred { border-color: #2a2415; background: #0f1208; }
+  .task-item.editing { border-color: var(--accent) !important; }
+
+  .checkbox { width: 18px; height: 18px; border: 1.5px solid var(--border2); border-radius: 5px; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; margin-top: 2px; }
+  .checkbox:hover { border-color: var(--accent); }
+  .task-item.recurring .checkbox:hover { border-color: var(--recur); }
+  .task-item.done .checkbox { background: var(--done); border-color: var(--done-text); }
+  .checkbox-inner { width: 8px; height: 8px; border-radius: 2px; background: var(--accent); transform: scale(0); transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1); }
+  .task-item.done .checkbox-inner { transform: scale(1); background: var(--done-text); }
+
+  .task-body { flex: 1; min-width: 0; }
+  .task-text { font-size: 0.82rem; color: var(--text); letter-spacing: 0.01em; line-height: 1.5; word-break: break-word; }
+  .task-item.done .task-text { color: var(--done-text); text-decoration: line-through; text-decoration-color: var(--border2); }
+  .task-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+  .recur-badge { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--recur); background: rgba(74,158,122,0.1); border: 1px solid rgba(74,158,122,0.2); padding: 2px 8px; border-radius: 20px; }
+  .time-badge { font-size: 0.62rem; color: var(--text-muted); letter-spacing: 0.06em; }
+  .streak-badge { font-size: 0.6rem; color: var(--star); letter-spacing: 0.06em; opacity: 0.8; }
+
+  /* Inline edit */
+  .edit-area { display: none; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .task-item.editing .edit-area { display: flex; }
+  .task-item.editing .task-text { display: none; }
+  .task-item.editing .task-meta { display: none; }
+  .edit-input { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.8rem; padding: 8px 10px; border-radius: 7px; outline: none; width: 100%; transition: border-color 0.15s; }
+  .edit-input:focus { border-color: var(--accent); }
+  .edit-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .edit-row select, .edit-row input[type="time"] { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.72rem; padding: 6px 10px; border-radius: 7px; outline: none; color-scheme: dark; }
+  .edit-row select:focus, .edit-row input[type="time"]:focus { border-color: var(--accent); }
+  .edit-row select option { background: #1a1a1f; }
+  .edit-actions { display: flex; gap: 6px; }
+  .edit-save-btn { background: var(--accent); border: none; color: white; font-family: 'DM Mono', monospace; font-size: 0.67rem; letter-spacing: 0.08em; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  .edit-save-btn:hover { filter: brightness(1.15); }
+  .edit-cancel-btn { background: none; border: 1px solid var(--border2); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 0.67rem; letter-spacing: 0.08em; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  .edit-cancel-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .task-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .star-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1rem; padding: 2px 4px; transition: all 0.15s; line-height: 1; }
+  .star-btn:hover { color: var(--star); transform: scale(1.2); }
+  .star-btn.starred { color: var(--star); }
+  .icon-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.78rem; padding: 2px 4px; transition: all 0.15s; opacity: 0; line-height: 1; }
+  .task-item:hover .icon-btn { opacity: 1; }
+  .icon-btn:hover { color: var(--text-dim); }
+  .icon-btn.del:hover { color: var(--red); }
+
+  /* ── Empty ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 0.72rem; letter-spacing: 0.06em; line-height: 2; }
+  .empty-icon { font-size: 2rem; margin-bottom: 12px; opacity: 0.3; }
+
+  .clear-done { background: none; border: none; color: var(--text-muted); font-family: 'DM Mono', monospace; font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; margin-top: 20px; padding: 6px 0; display: none; transition: color 0.15s; }
+  .clear-done:hover { color: var(--red); }
+  .clear-done.visible { display: block; }
+
+  /* ════════════════════════════════
+     BUDGET / EXPENSE TAB
+  ════════════════════════════════ */
+
+  /* Month nav */
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    animation: fadeDown 0.4s ease both;
+  }
+
+  .month-nav-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .month-nav-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  .month-label {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.5rem;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  /* Budget overview cards */
+  .budget-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+    animation: fadeDown 0.4s 0.05s ease both;
+  }
+
+  .budget-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    transition: border-color 0.15s;
+  }
+
+  .budget-card:hover { border-color: var(--border2); }
+
+  .bc-label { font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+
+  .bc-value {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.5rem;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .bc-value.positive { color: var(--recur); }
+  .bc-value.negative { color: #c05050; }
+
+  .bc-sub { font-size: 0.6rem; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.04em; }
+
+  /* Budget limit setter */
+  .budget-limit-row {
+    background: var(--budget-bg);
+    border: 1px solid var(--budget-border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    animation: fadeDown 0.4s 0.1s ease both;
+    flex-wrap: wrap;
+  }
+
+  .bl-label { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--budget); flex-shrink: 0; }
+
+  .bl-input {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    padding: 7px 12px;
+    border-radius: 8px;
+    outline: none;
+    width: 130px;
+    transition: border-color 0.15s;
+  }
+
+  .bl-input:focus { border-color: var(--budget); }
+
+  .bl-save-btn {
+    background: var(--budget);
+    border: none;
+    color: #1a0a02;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .bl-save-btn:hover { filter: brightness(1.1); }
+
+  /* Progress bar */
+  .budget-progress {
+    margin-bottom: 24px;
+    animation: fadeDown 0.4s 0.12s ease both;
+  }
+
+  .bp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.62rem; color: var(--text-muted); letter-spacing: 0.06em; }
+  .bp-pct { color: var(--text-dim); }
+
+  .bp-track {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bp-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--recur);
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .bp-fill.warn { background: var(--star); }
+  .bp-fill.danger { background: #c05050; }
+
+  /* Category breakdown */
+  .category-breakdown {
+    margin-bottom: 24px;
+    animation: fadeDown 0.4s 0.14s ease both;
+  }
+
+  .cat-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 0.68rem;
+  }
+
+  .cat-name { color: var(--text-dim); width: 100px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-track { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+  .cat-amt { color: var(--text-muted); font-size: 0.62rem; width: 70px; text-align: right; flex-shrink: 0; }
+
+  /* Expense input */
+  .expense-input-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    animation: fadeDown 0.4s 0.15s ease both;
+  }
+
+  .exp-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .exp-input-text {
+    flex: 2;
+    min-width: 120px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 9px 12px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .exp-input-text:focus { border-color: var(--accent); }
+  .exp-input-text::placeholder { color: var(--text-muted); }
+
+  .exp-input-amt {
+    width: 110px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 9px 12px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .exp-input-amt:focus { border-color: var(--accent); }
+  .exp-input-amt::placeholder { color: var(--text-muted); }
+
+  .exp-select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 9px 10px;
+    border-radius: 8px;
+    outline: none;
+    color-scheme: dark;
+    transition: border-color 0.15s;
+  }
+
+  .exp-select:focus { border-color: var(--accent); }
+  .exp-select option { background: #1a1a1f; }
+
+  .exp-add-btn {
+    background: var(--accent);
+    border: none;
+    color: white;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    padding: 9px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .exp-add-btn:hover { filter: brightness(1.15); }
+
+  /* Expense type toggle */
+  .exp-type-toggle {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .exp-type-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .exp-type-btn.active-expense { background: rgba(192,80,80,0.15); border-color: #3a1a1a; color: #c05050; }
+  .exp-type-btn.active-income { background: rgba(74,158,122,0.15); border-color: var(--recur-border); color: var(--recur); }
+
+  /* Expense list */
+  .expense-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: fadeDown 0.4s 0.2s ease both;
+  }
+
+  .exp-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.15s;
+    animation: slideIn 0.3s ease both;
+  }
+
+  .exp-item:hover { border-color: var(--border2); }
+  .exp-item.income { border-left: 3px solid var(--recur); }
+  .exp-item.expense { border-left: 3px solid #c05050; }
+  .exp-item.editing { border-color: var(--accent) !important; }
+
+  .exp-cat-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .exp-body { flex: 1; min-width: 0; }
+
+  .exp-desc { font-size: 0.8rem; color: var(--text); line-height: 1.4; }
+  .exp-meta { font-size: 0.62rem; color: var(--text-muted); margin-top: 3px; letter-spacing: 0.04em; }
+
+  .exp-amount {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+  }
+
+  .exp-amount.income { color: var(--recur); }
+  .exp-amount.expense { color: #c05050; }
+
+  .exp-actions { display: flex; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+  .exp-item:hover .exp-actions { opacity: 1; }
+
+  /* Expense edit inline */
+  .exp-edit-area { display: none; flex-direction: column; gap: 8px; margin-top: 8px; width: 100%; }
+  .exp-item.editing .exp-edit-area { display: flex; }
+  .exp-item.editing .exp-desc { display: none; }
+  .exp-item.editing .exp-meta { display: none; }
+
+  /* Monthly summary table */
+  .monthly-summary {
+    margin-top: 32px;
+    animation: fadeDown 0.4s 0.25s ease both;
+  }
+
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+  }
+
+  .summary-table th {
+    text-align: left;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .summary-table td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dim);
+    vertical-align: middle;
+  }
+
+  .summary-table tr:last-child td { border-bottom: none; }
+  .summary-table tr:hover td { color: var(--text); background: rgba(255,255,255,0.01); }
+
+  .td-cat { display: flex; align-items: center; gap: 8px; }
+  .td-income { color: var(--recur); }
+  .td-expense { color: #c05050; }
+  .td-date { color: var(--text-muted); font-size: 0.65rem; }
+
+  /* Animations */
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  @media (max-width: 500px) {
+    .budget-cards { grid-template-columns: 1fr 1fr; }
+    .budget-cards .budget-card:last-child { grid-column: span 2; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">braindump<span>.</span></div>
+    <div class="tagline">one thing at a time — no rush, no pressure</div>
+    <div class="stats">
+      <span>tasks: <span class="stat-val" id="total-count">0</span></span>
+      <span>starred: <span class="stat-val" id="star-count">0</span></span>
+      <span>recurring: <span class="stat-val" id="recur-count">0</span></span>
+      <span>done: <span class="stat-val" id="done-count">0</span></span>
+    </div>
+  </header>
+
+  <!-- ── Tab bar ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('tasks',this)">tasks</button>
+    <button class="tab-btn" onclick="switchTab('recurring',this)">↻ recurring</button>
+    <button class="tab-btn" onclick="switchTab('budget',this)">₦ budget</button>
+  </div>
+
+  <!-- ══════════ TASKS TAB ══════════ -->
+  <div class="tab-panel active" id="tab-tasks">
+    <div class="focus-banner" id="focus-banner">
+      <div class="focus-label">★ focus on this first</div>
+      <div class="focus-task" id="focus-task-text">—</div>
+      <div class="focus-hint">your top starred task · check it off when done</div>
+    </div>
+
+    <div class="today-strip" id="today-strip">
+      <div class="today-strip-label">↻ due today</div>
+      <div class="today-strip-tasks" id="today-strip-tasks"></div>
+    </div>
+
+    <div class="input-zone">
+      <input type="text" id="task-input" placeholder="dump it here — anything on your mind..." maxlength="200" />
+      <button class="add-btn" onclick="addTask()">+ add</button>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">all</button>
+      <button class="filter-btn" onclick="setFilter('starred',this)">starred</button>
+      <button class="filter-btn" onclick="setFilter('active',this)">active</button>
+      <button class="filter-btn" onclick="setFilter('done',this)">done</button>
+    </div>
+
+    <div class="task-list" id="task-list"></div>
+    <button class="clear-done" id="clear-done-btn" onclick="clearDone()">clear completed tasks</button>
+  </div>
+
+  <!-- ══════════ RECURRING TAB ══════════ -->
+  <div class="tab-panel" id="tab-recurring">
+    <div class="recur-input-panel">
+      <div class="recur-row">
+        <input type="text" id="recur-text" placeholder="e.g. hit the gym" maxlength="100" />
+        <input type="time" id="recur-time" />
+        <select id="recur-freq">
+          <option value="daily">daily</option>
+          <option value="weekdays">weekdays</option>
+          <option value="weekends">weekends</option>
+          <option value="weekly">weekly</option>
+        </select>
+        <button class="recur-add-btn" onclick="addRecurring()">+ add</button>
+      </div>
+      <div class="recur-hint">set a time + frequency — it'll surface in your tasks tab every day it's due</div>
+    </div>
+    <div class="recur-list" id="recur-list"></div>
+  </div>
+
+  <!-- ══════════ BUDGET TAB ══════════ -->
+  <div class="tab-panel" id="tab-budget">
+
+    <!-- Month navigation -->
+    <div class="month-nav">
+      <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+      <div class="month-label" id="month-label">March 2026</div>
+      <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+
+    <!-- Overview cards -->
+    <div class="budget-cards">
+      <div class="budget-card">
+        <div class="bc-label">income</div>
+        <div class="bc-value positive" id="bc-income">₦0</div>
+        <div class="bc-sub" id="bc-income-count">0 entries</div>
+      </div>
+      <div class="budget-card">
+        <div class="bc-label">expenses</div>
+        <div class="bc-value negative" id="bc-expenses">₦0</div>
+        <div class="bc-sub" id="bc-expense-count">0 entries</div>
+      </div>
+      <div class="budget-card">
+        <div class="bc-label">balance</div>
+        <div class="bc-value" id="bc-balance">₦0</div>
+        <div class="bc-sub" id="bc-balance-sub">—</div>
+      </div>
+    </div>
+
+    <!-- Monthly budget limit -->
+    <div class="budget-limit-row">
+      <div class="bl-label">monthly budget</div>
+      <input type="number" class="bl-input" id="budget-limit-input" placeholder="e.g. 200000" min="0" />
+      <button class="bl-save-btn" onclick="saveBudgetLimit()">set limit</button>
+      <span id="bl-current" style="font-size:0.65rem;color:var(--text-muted);letter-spacing:0.06em;"></span>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="budget-progress" id="budget-progress" style="display:none">
+      <div class="bp-row">
+        <span id="bp-label">spent of budget</span>
+        <span class="bp-pct" id="bp-pct">0%</span>
+      </div>
+      <div class="bp-track"><div class="bp-fill" id="bp-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Category breakdown -->
+    <div class="category-breakdown" id="cat-breakdown" style="display:none">
+      <div class="section-label">by category</div>
+      <div id="cat-bars"></div>
+    </div>
+
+    <!-- Add expense/income -->
+    <div class="expense-input-panel">
+      <div class="section-label" style="margin-top:0">add entry</div>
+      <div class="exp-row">
+        <input type="text" class="exp-input-text" id="exp-desc" placeholder="description" maxlength="80" />
+        <input type="number" class="exp-input-amt" id="exp-amount" placeholder="amount" min="0" step="any" />
+        <select class="exp-select" id="exp-cat">
+          <option value="food">food</option>
+          <option value="transport">transport</option>
+          <option value="utilities">utilities</option>
+          <option value="health">health</option>
+          <option value="shopping">shopping</option>
+          <option value="entertainment">entertainment</option>
+          <option value="savings">savings</option>
+          <option value="salary">salary</option>
+          <option value="freelance">freelance</option>
+          <option value="other">other</option>
+        </select>
+        <button class="exp-add-btn" onclick="addExpense()">+ add</button>
+      </div>
+      <div class="exp-type-toggle">
+        <button class="exp-type-btn active-expense" id="type-expense-btn" onclick="setExpType('expense',this)">expense</button>
+        <button class="exp-type-btn" id="type-income-btn" onclick="setExpType('income',this)">income</button>
+      </div>
+    </div>
+
+    <!-- Expense list -->
+    <div class="expense-list" id="expense-list"></div>
+
+    <!-- Monthly summary table -->
+    <div class="monthly-summary" id="monthly-summary" style="display:none">
+      <div class="section-label">all entries</div>
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>description</th>
+            <th>category</th>
+            <th>date</th>
+            <th style="text-align:right">amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="summary-tbody"></tbody>
+      </table>
+    </div>
+
+  </div><!-- end budget tab -->
+
+</div><!-- end container -->
+
+<script>
+  /* ═══════════════════════════════
+     STATE
+  ═══════════════════════════════ */
+  let tasks     = JSON.parse(localStorage.getItem('bd_tasks')     || '[]');
+  let recurring = JSON.parse(localStorage.getItem('bd_recurring') || '[]');
+  let expenses  = JSON.parse(localStorage.getItem('bd_expenses')  || '[]');
+  let budgetLimits = JSON.parse(localStorage.getItem('bd_budget_limits') || '{}');
+
+  let currentFilter = 'all';
+  let currentTab    = 'tasks';
+  let editingId     = null;
+  let expType       = 'expense';
+
+  // Budget month state (year-month string "2026-03")
+  const todayD  = new Date();
+  let budgetYear  = todayD.getFullYear();
+  let budgetMonth = todayD.getMonth(); // 0-indexed
+
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  const CAT_COLORS = {
+    food:'#e07b54', transport:'#7b68ee', utilities:'#4a9e7a', health:'#c9a84c',
+    shopping:'#e05480', entertainment:'#54b0e0', savings:'#80e054', salary:'#4a9e7a',
+    freelance:'#9e7a4a', other:'#6b6875'
+  };
+
+  const FREQ_LABELS = { daily:'↻ daily', weekdays:'↻ weekdays', weekends:'↻ weekends', weekly:'↻ weekly' };
+
+  function save() {
+    localStorage.setItem('bd_tasks',      JSON.stringify(tasks));
+    localStorage.setItem('bd_recurring',  JSON.stringify(recurring));
+    localStorage.setItem('bd_expenses',   JSON.stringify(expenses));
+    localStorage.setItem('bd_budget_limits', JSON.stringify(budgetLimits));
+  }
+
+  function fmt(n) {
+    return '₦' + Math.abs(n).toLocaleString('en-NG', {minimumFractionDigits:0, maximumFractionDigits:0});
+  }
+
+  function monthKey() { return `${budgetYear}-${String(budgetMonth+1).padStart(2,'0')}`; }
+
+  function monthExpenses() {
+    const key = monthKey();
+    return expenses.filter(e => e.month === key);
+  }
+
+  /* ── Tab switching ── */
+  function switchTab(tab, btn) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'tasks') render();
+    else if (tab === 'recurring') renderRecurring();
+    else if (tab === 'budget') renderBudget();
+  }
+
+  /* ════════════════════════════════
+     TASKS
+  ════════════════════════════════ */
+  function addTask() {
+    const inp = document.getElementById('task-input');
+    const text = inp.value.trim();
+    if (!text) return;
+    tasks.unshift({ id: Date.now(), text, done: false, starred: false, createdAt: new Date().toISOString() });
+    save(); render(); inp.value = ''; inp.focus();
+  }
+
+  function toggleDone(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.done = !t.done; save(); render(); }
+  }
+
+  function toggleStar(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.starred = !t.starred; save(); render(); }
+  }
+
+  function deleteTask(id) { tasks = tasks.filter(t => t.id !== id); save(); render(); }
+
+  function clearDone() { tasks = tasks.filter(t => !t.done); save(); render(); }
+
+  function startEdit(id) {
+    editingId = id; render();
+    setTimeout(() => { const i = document.getElementById('edit-input-'+id); if(i){i.focus();i.select();} }, 40);
+  }
+
+  function saveEdit(id) {
+    const text = document.getElementById('edit-input-'+id)?.value.trim();
+    if (!text) return;
+    const t = tasks.find(t => t.id === id);
+    if (t) t.text = text;
+    editingId = null; save(); render();
+  }
+
+  function cancelEdit() { editingId = null; render(); }
+
+  /* ════════════════════════════════
+     RECURRING
+  ════════════════════════════════ */
+  function addRecurring() {
+    const text = document.getElementById('recur-text').value.trim();
+    const time = document.getElementById('recur-time').value;
+    const freq = document.getElementById('recur-freq').value;
+    if (!text) return;
+    recurring.push({ id: Date.now(), text, time: time||'', freq, starred: false, streak: 0, lastDone: null });
+    save(); renderRecurring(); renderStats();
+    document.getElementById('recur-text').value = '';
+    document.getElementById('recur-time').value = '';
+  }
+
+  function deleteRecurring(id) { recurring = recurring.filter(r => r.id !== id); save(); renderRecurring(); renderStats(); }
+
+  function toggleRecurStar(id) {
+    const r = recurring.find(r => r.id === id);
+    if (r) { r.starred = !r.starred; save(); renderRecurring(); }
+  }
+
+  function markRecurDone(id) {
+    const r = recurring.find(r => r.id === id);
+    if (!r) return;
+    const today = new Date().toDateString();
+    if (r.lastDone === today) { r.lastDone = null; r.streak = Math.max(0, r.streak-1); }
+    else { r.lastDone = today; r.streak = (r.streak||0)+1; }
+    save(); renderRecurring(); renderStats();
+  }
+
+  function startEditRecur(id) {
+    editingId = 'r'+id; renderRecurring();
+    setTimeout(() => { const i = document.getElementById('redit-text-'+id); if(i){i.focus();i.select();} }, 40);
+  }
+
+  function saveEditRecur(id) {
+    const text = document.getElementById('redit-text-'+id)?.value.trim();
+    const time = document.getElementById('redit-time-'+id)?.value||'';
+    const freq = document.getElementById('redit-freq-'+id)?.value;
+    if (!text) return;
+    const r = recurring.find(r => r.id === id);
+    if (r) { r.text = text; r.time = time; r.freq = freq; }
+    editingId = null; save(); renderRecurring();
+  }
+
+  function cancelEditRecur() { editingId = null; renderRecurring(); }
+
+  function isDueToday(r) {
+    const d = new Date().getDay();
+    if (r.freq==='daily') return true;
+    if (r.freq==='weekdays') return d>=1&&d<=5;
+    if (r.freq==='weekends') return d===0||d===6;
+    if (r.freq==='weekly') { if(!r.lastDone) return true; return (new Date()-new Date(r.lastDone))/86400000>=7; }
+    return true;
+  }
+
+  function isDoneToday(r) { return r.lastDone === new Date().toDateString(); }
+
+  function formatTime(t) {
+    if (!t) return '';
+    const [h,m] = t.split(':');
+    const hr = parseInt(h);
+    return `${hr%12||12}:${m}${hr>=12?'pm':'am'}`;
+  }
+
+  /* ════════════════════════════════
+     BUDGET / EXPENSES
+  ════════════════════════════════ */
+  function setExpType(type, btn) {
+    expType = type;
+    document.getElementById('type-expense-btn').className = 'exp-type-btn' + (type==='expense' ? ' active-expense' : '');
+    document.getElementById('type-income-btn').className  = 'exp-type-btn' + (type==='income'  ? ' active-income'  : '');
+  }
+
+  function changeMonth(dir) {
+    budgetMonth += dir;
+    if (budgetMonth > 11) { budgetMonth = 0; budgetYear++; }
+    if (budgetMonth < 0)  { budgetMonth = 11; budgetYear--; }
+    renderBudget();
+  }
+
+  function saveBudgetLimit() {
+    const val = parseFloat(document.getElementById('budget-limit-input').value);
+    if (isNaN(val) || val <= 0) return;
+    budgetLimits[monthKey()] = val;
+    save(); renderBudget();
+    document.getElementById('budget-limit-input').value = '';
+  }
+
+  function addExpense() {
+    const desc = document.getElementById('exp-desc').value.trim();
+    const amt  = parseFloat(document.getElementById('exp-amount').value);
+    const cat  = document.getElementById('exp-cat').value;
+    if (!desc || isNaN(amt) || amt <= 0) return;
+
+    expenses.push({
+      id: Date.now(),
+      desc, cat,
+      amount: amt,
+      type: expType,
+      month: monthKey(),
+      date: new Date().toISOString()
+    });
+
+    save(); renderBudget();
+    document.getElementById('exp-desc').value = '';
+    document.getElementById('exp-amount').value = '';
+    document.getElementById('exp-desc').focus();
+  }
+
+  function deleteExpense(id) {
+    expenses = expenses.filter(e => e.id !== id);
+    save(); renderBudget();
+  }
+
+  function startEditExp(id) {
+    editingId = 'e'+id; renderBudget();
+    setTimeout(() => { const i = document.getElementById('eedit-desc-'+id); if(i){i.focus();i.select();} }, 40);
+  }
+
+  function saveEditExp(id) {
+    const desc = document.getElementById('eedit-desc-'+id)?.value.trim();
+    const amt  = parseFloat(document.getElementById('eedit-amt-'+id)?.value);
+    const cat  = document.getElementById('eedit-cat-'+id)?.value;
+    if (!desc || isNaN(amt)) return;
+    const e = expenses.find(e => e.id === id);
+    if (e) { e.desc = desc; e.amount = amt; e.cat = cat; }
+    editingId = null; save(); renderBudget();
+  }
+
+  function cancelEditExp() { editingId = null; renderBudget(); }
+
+  /* ════════════════════════════════
+     STATS
+  ════════════════════════════════ */
+  function renderStats() {
+    document.getElementById('total-count').textContent = tasks.length;
+    document.getElementById('star-count').textContent  = tasks.filter(t=>t.starred).length;
+    document.getElementById('recur-count').textContent = recurring.length;
+    document.getElementById('done-count').textContent  = tasks.filter(t=>t.done).length;
+
+    const top = tasks.find(t=>t.starred&&!t.done);
+    const banner = document.getElementById('focus-banner');
+    if (top) { document.getElementById('focus-task-text').textContent = top.text; banner.classList.add('visible'); }
+    else banner.classList.remove('visible');
+
+    const due = recurring.filter(r=>isDueToday(r)&&!isDoneToday(r));
+    const strip = document.getElementById('today-strip');
+    if (due.length) {
+      strip.classList.add('visible');
+      document.getElementById('today-strip-tasks').textContent =
+        due.slice(0,3).map(r=>r.text+(r.time?` @ ${formatTime(r.time)}`:'')).join('  ·  ')
+        + (due.length>3?` +${due.length-3} more`:'');
+    } else strip.classList.remove('visible');
+
+    const cb = document.getElementById('clear-done-btn');
+    tasks.filter(t=>t.done).length > 0 ? cb.classList.add('visible') : cb.classList.remove('visible');
+  }
+
+  /* ════════════════════════════════
+     RENDER TASKS
+  ════════════════════════════════ */
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+
+  function getFiltered() {
+    const s=[...tasks.filter(t=>t.starred&&!t.done)];
+    const a=[...tasks.filter(t=>!t.starred&&!t.done)];
+    const d=[...tasks.filter(t=>t.done)];
+    const sorted=[...s,...a,...d];
+    if(currentFilter==='starred') return sorted.filter(t=>t.starred);
+    if(currentFilter==='active')  return sorted.filter(t=>!t.done);
+    if(currentFilter==='done')    return sorted.filter(t=>t.done);
+    return sorted;
+  }
+
+  function render() {
+    if (currentTab!=='tasks') return;
+    renderStats();
+    const list = document.getElementById('task-list');
+    const filtered = getFiltered();
+
+    if (!filtered.length) {
+      list.innerHTML=`<div class="empty"><div class="empty-icon">◌</div>${
+        currentFilter==='all'?'your mind is clear<br>start dumping tasks above':
+        currentFilter==='starred'?'no starred tasks yet<br>star the ones that matter most':
+        currentFilter==='done'?'nothing completed yet<br>check off tasks as you go':
+        'no active tasks<br>you\'re all caught up'}</div>`;
+      return;
+    }
+
+    let lastSection=null, html='';
+    for (const task of filtered) {
+      const section = task.done?'done':task.starred?'starred':'active';
+      if (section!==lastSection && currentFilter==='all') {
+        const labels={starred:'★ starred',active:'everything else',done:'completed'};
+        html+=`<div class="section-label">${labels[section]}</div>`;
+        lastSection=section;
+      }
+      const isEditing = editingId===task.id;
+      html+=`
+        <div class="task-item ${task.done?'done':''} ${task.starred&&!task.done?'starred':''} ${isEditing?'editing':''}" id="task-${task.id}">
+          <div class="checkbox" onclick="toggleDone(${task.id})"><div class="checkbox-inner"></div></div>
+          <div class="task-body">
+            <div class="task-text">${escHtml(task.text)}</div>
+            <div class="edit-area">
+              <input class="edit-input" id="edit-input-${task.id}" value="${escHtml(task.text)}" maxlength="200"
+                onkeydown="if(event.key==='Enter')saveEdit(${task.id});if(event.key==='Escape')cancelEdit();" />
+              <div class="edit-actions">
+                <button class="edit-save-btn" onclick="saveEdit(${task.id})">save</button>
+                <button class="edit-cancel-btn" onclick="cancelEdit()">cancel</button>
+              </div>
+            </div>
+          </div>
+          <div class="task-actions">
+            <button class="star-btn ${task.starred?'starred':''}" onclick="toggleStar(${task.id})">${task.starred?'★':'☆'}</button>
+            <button class="icon-btn" onclick="startEdit(${task.id})" title="edit">✎</button>
+            <button class="icon-btn del" onclick="deleteTask(${task.id})" title="delete">✕</button>
+          </div>
+        </div>`;
+    }
+    list.innerHTML = html;
+  }
+
+  /* ════════════════════════════════
+     RENDER RECURRING
+  ════════════════════════════════ */
+  function renderRecurring() {
+    renderStats();
+    const list = document.getElementById('recur-list');
+    if (!recurring.length) {
+      list.innerHTML=`<div class="empty"><div class="empty-icon">↻</div>no recurring tasks yet<br>add one above — like hitting the gym at 7:00am daily</div>`;
+      return;
+    }
+    const sorted=[...recurring.filter(r=>r.starred),...recurring.filter(r=>!r.starred)];
+    let html='';
+    for (const r of sorted) {
+      const dueToday=isDueToday(r), doneToday=isDoneToday(r), isEditing=editingId==='r'+r.id;
+      html+=`
+        <div class="task-item recurring ${r.starred?'starred':''} ${doneToday?'done':''} ${isEditing?'editing':''}">
+          <div class="checkbox" onclick="markRecurDone(${r.id})">
+            <div class="checkbox-inner" style="${doneToday?'transform:scale(1);background:var(--recur)':''}"></div>
+          </div>
+          <div class="task-body">
+            <div class="task-text">${escHtml(r.text)}</div>
+            <div class="task-meta">
+              <span class="recur-badge">${FREQ_LABELS[r.freq]||r.freq}</span>
+              ${r.time?`<span class="time-badge">@ ${formatTime(r.time)}</span>`:''}
+              ${r.streak>1?`<span class="streak-badge">🔥 ${r.streak}d streak</span>`:''}
+              ${dueToday&&!doneToday?`<span style="font-size:0.6rem;color:var(--recur);letter-spacing:0.08em">● due today</span>`:''}
+              ${doneToday?`<span style="font-size:0.6rem;color:var(--done-text);letter-spacing:0.08em">✓ done today</span>`:''}
+            </div>
+            <div class="edit-area">
+              <input class="edit-input" id="redit-text-${r.id}" value="${escHtml(r.text)}" maxlength="100"
+                onkeydown="if(event.key==='Enter')saveEditRecur(${r.id});if(event.key==='Escape')cancelEditRecur();" />
+              <div class="edit-row">
+                <input type="time" id="redit-time-${r.id}" value="${r.time||''}" />
+                <select id="redit-freq-${r.id}">
+                  ${['daily','weekdays','weekends','weekly'].map(f=>`<option value="${f}"${r.freq===f?' selected':''}>${f}</option>`).join('')}
+                </select>
+              </div>
+              <div class="edit-actions">
+                <button class="edit-save-btn" onclick="saveEditRecur(${r.id})">save</button>
+                <button class="edit-cancel-btn" onclick="cancelEditRecur()">cancel</button>
+              </div>
+            </div>
+          </div>
+          <div class="task-actions">
+            <button class="star-btn ${r.starred?'starred':''}" onclick="toggleRecurStar(${r.id})">${r.starred?'★':'☆'}</button>
+            <button class="icon-btn" onclick="startEditRecur(${r.id})" title="edit">✎</button>
+            <button class="icon-btn del" onclick="deleteRecurring(${r.id})" title="delete">✕</button>
+          </div>
+        </div>`;
+    }
+    list.innerHTML = html;
+  }
+
+  /* ════════════════════════════════
+     RENDER BUDGET
+  ════════════════════════════════ */
+  function renderBudget() {
+    const key = monthKey();
+    document.getElementById('month-label').textContent = `${MONTH_NAMES[budgetMonth]} ${budgetYear}`;
+
+    const entries = monthExpenses();
+    const totalIncome   = entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const totalExpenses = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    const balance = totalIncome - totalExpenses;
+
+    // Cards
+    document.getElementById('bc-income').textContent    = fmt(totalIncome);
+    document.getElementById('bc-expenses').textContent  = fmt(totalExpenses);
+    document.getElementById('bc-income-count').textContent  = `${entries.filter(e=>e.type==='income').length} entries`;
+    document.getElementById('bc-expense-count').textContent = `${entries.filter(e=>e.type==='expense').length} entries`;
+
+    const balEl = document.getElementById('bc-balance');
+    balEl.textContent = (balance>=0?'':'-') + fmt(balance);
+    balEl.className = 'bc-value ' + (balance>=0?'positive':'negative');
+    document.getElementById('bc-balance-sub').textContent = balance>=0?'you\'re on track':'over income';
+
+    // Budget limit
+    const limit = budgetLimits[key];
+    const blCurrent = document.getElementById('bl-current');
+    if (limit) {
+      blCurrent.textContent = `current: ${fmt(limit)}`;
+      // Progress bar
+      const prog = document.getElementById('budget-progress');
+      prog.style.display = 'block';
+      const pct = Math.min((totalExpenses/limit)*100, 100);
+      const fill = document.getElementById('bp-fill');
+      fill.style.width = pct + '%';
+      fill.className = 'bp-fill' + (pct>=90?' danger':pct>=70?' warn':'');
+      document.getElementById('bp-pct').textContent = Math.round(pct) + '%';
+      document.getElementById('bp-label').textContent = `${fmt(totalExpenses)} spent of ${fmt(limit)}`;
+    } else {
+      blCurrent.textContent = 'no limit set';
+      document.getElementById('budget-progress').style.display = 'none';
+    }
+
+    // Category breakdown
+    const catTotals = {};
+    entries.filter(e=>e.type==='expense').forEach(e => { catTotals[e.cat] = (catTotals[e.cat]||0)+e.amount; });
+    const catEntries = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+    const catBreak = document.getElementById('cat-breakdown');
+    const catBars  = document.getElementById('cat-bars');
+
+    if (catEntries.length) {
+      catBreak.style.display='block';
+      const maxCat = catEntries[0][1];
+      catBars.innerHTML = catEntries.map(([cat,amt])=>`
+        <div class="cat-bar-row">
+          <div class="cat-name">${cat}</div>
+          <div class="cat-track"><div class="cat-fill" style="width:${(amt/maxCat*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6b6875'}"></div></div>
+          <div class="cat-amt">${fmt(amt)}</div>
+        </div>`).join('');
+    } else catBreak.style.display='none';
+
+    // Expense list (recent 8)
+    const expList = document.getElementById('expense-list');
+    const sorted = [...entries].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const recent = sorted.slice(0,8);
+
+    if (!entries.length) {
+      expList.innerHTML = `<div class="empty"><div class="empty-icon">₦</div>no entries for ${MONTH_NAMES[budgetMonth]}<br>add your first income or expense above</div>`;
+    } else {
+      const catOptions = ['food','transport','utilities','health','shopping','entertainment','savings','salary','freelance','other']
+        .map(c=>`<option value="${c}">${c}</option>`).join('');
+
+      expList.innerHTML = recent.map(e => {
+        const isEditing = editingId==='e'+e.id;
+        const d = new Date(e.date);
+        const dateStr = `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0,3)}`;
+        return `
+          <div class="exp-item ${e.type} ${isEditing?'editing':''}">
+            <div class="exp-cat-dot" style="background:${CAT_COLORS[e.cat]||'#6b6875'}"></div>
+            <div class="exp-body">
+              <div class="exp-desc">${escHtml(e.desc)}</div>
+              <div class="exp-meta">${e.cat} · ${dateStr}</div>
+              <div class="exp-edit-area">
+                <input class="edit-input" id="eedit-desc-${e.id}" value="${escHtml(e.desc)}" maxlength="80"
+                  onkeydown="if(event.key==='Enter')saveEditExp(${e.id});if(event.key==='Escape')cancelEditExp();" />
+                <div class="edit-row">
+                  <input type="number" class="edit-input" id="eedit-amt-${e.id}" value="${e.amount}" min="0" step="any" style="width:110px" />
+                  <select class="edit-row" id="eedit-cat-${e.id}" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:0.72rem;padding:6px 10px;border-radius:7px;outline:none;color-scheme:dark;">
+                    ${['food','transport','utilities','health','shopping','entertainment','savings','salary','freelance','other'].map(c=>`<option value="${c}"${e.cat===c?' selected':''}>${c}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="edit-actions">
+                  <button class="edit-save-btn" onclick="saveEditExp(${e.id})">save</button>
+                  <button class="edit-cancel-btn" onclick="cancelEditExp()">cancel</button>
+                </div>
+              </div>
+            </div>
+            <div class="exp-amount ${e.type}">${e.type==='expense'?'-':'+'} ${fmt(e.amount)}</div>
+            <div class="exp-actions">
+              <button class="icon-btn" style="opacity:1" onclick="startEditExp(${e.id})" title="edit">✎</button>
+              <button class="icon-btn del" style="opacity:1" onclick="deleteExpense(${e.id})" title="delete">✕</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // Summary table
+    const summaryEl = document.getElementById('monthly-summary');
+    const tbody = document.getElementById('summary-tbody');
+    if (entries.length) {
+      summaryEl.style.display='block';
+      tbody.innerHTML = sorted.map(e=>{
+        const d = new Date(e.date);
+        const dateStr = `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0,3)}`;
+        return `<tr>
+          <td>${escHtml(e.desc)}</td>
+          <td><div class="td-cat"><div style="width:6px;height:6px;border-radius:50%;background:${CAT_COLORS[e.cat]||'#6b6875'};flex-shrink:0"></div>${e.cat}</div></td>
+          <td class="td-date">${dateStr}</td>
+          <td style="text-align:right" class="${e.type==='income'?'td-income':'td-expense'}">${e.type==='expense'?'-':'+'} ${fmt(e.amount)}</td>
+          <td><button class="icon-btn del" style="opacity:0.4;font-size:0.7rem" onclick="deleteExpense(${e.id})">✕</button></td>
+        </tr>`;
+      }).join('');
+    } else summaryEl.style.display='none';
+  }
+
+  /* ── Helpers ── */
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Init ── */
+  document.getElementById('task-input').addEventListener('keydown', e => { if(e.key==='Enter') addTask(); });
+  document.getElementById('recur-text').addEventListener('keydown', e => { if(e.key==='Enter') addRecurring(); });
+  document.getElementById('exp-amount').addEventListener('keydown', e => { if(e.key==='Enter') addExpense(); });
+  document.getElementById('budget-limit-input').addEventListener('keydown', e => { if(e.key==='Enter') saveBudgetLimit(); });
+
+  render();
+  renderRecurring();
+</script>
+</body>
+</html>
