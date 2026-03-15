@@ -753,15 +753,11 @@
         <button class="analytics-tab-btn" onclick="setAnalyticsPeriod(6,this)">6 months</button>
         <button class="analytics-tab-btn" onclick="setAnalyticsPeriod(12,this)">yearly</button>
       </div>
-      <div class="analytics-summary-row" id="analytics-cards"></div>
-      <div class="bar-chart-wrap">
-        <div class="bar-chart-title" id="analytics-chart-title">income vs expenses</div>
-        <div class="bar-chart" id="analytics-bar-chart"></div>
-        <div class="bar-chart-legend">
-          <span><span class="legend-dot" style="background:var(--recur)"></span>income</span>
-          <span><span class="legend-dot" style="background:#c05050"></span>expenses</span>
-        </div>
-      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px" id="analytics-row1"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px" id="analytics-row2"></div>
+      <div style="background:#131316;border:1px solid #222228;border-radius:14px;padding:20px 16px 14px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px"><div><div style="font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:#3d3b45;margin-bottom:3px" id="analytics-chart-title">income vs expenses</div><div style="font-size:0.58rem;color:#6b6875" id="analytics-chart-sub">monthly breakdown</div></div><div style="display:flex;gap:12px"><span style="display:flex;align-items:center;gap:4px;font-size:0.58rem;color:#6b6875"><span style="width:8px;height:8px;border-radius:2px;background:#4a9e7a;display:inline-block"></span>income</span><span style="display:flex;align-items:center;gap:4px;font-size:0.58rem;color:#6b6875"><span style="width:8px;height:8px;border-radius:2px;background:#c05050;display:inline-block"></span>expenses</span></div></div>
+        <div style="display:flex;align-items:flex-end;gap:5px;height:130px;padding:0 2px" id="analytics-bar-chart"></div>
+        
       <div class="top-cats">
         <div class="top-cats-title">top spending categories</div>
         <div id="analytics-cats-list"></div>
@@ -1313,45 +1309,106 @@
   function renderAnalytics() {
     const months = getMonthsData(analyticsPeriod);
     const totI = months.reduce((s,m)=>s+m.income,0);
-    const totE = months.reduce((s,m)=>s+m.exp,0);
-    const bal = totI - totE;
-    document.getElementById('analytics-cards').innerHTML =
-      '<div class="analytics-card"><div class="analytics-card-label">total income</div><div class="analytics-card-val income">'+fmt(totI)+'</div></div>'+
-      '<div class="analytics-card"><div class="analytics-card-label">total spent</div><div class="analytics-card-val expense">'+fmt(totE)+'</div></div>'+
-      '<div class="analytics-card"><div class="analytics-card-label">net balance</div><div class="analytics-card-val '+(bal>=0?'pos':'neg')+'">'+(bal<0?'-':'')+fmt(Math.abs(bal))+'</div></div>';
-    const maxV = Math.max(...months.map(m=>Math.max(m.income,m.exp)),1);
+    const totE = months.reduce((s,m)=>s+m.expenses,0);
+    const bal = totI-totE;
+    const savingsRate = totI>0?Math.round((bal/totI)*100):0;
+    const avgE = Math.round(totE/analyticsPeriod);
     const lbl = analyticsPeriod===12?'last 12 months':'last '+analyticsPeriod+' months';
-    document.getElementById('analytics-chart-title').textContent = 'income vs expenses · '+lbl;
-    const chartEl = document.getElementById('analytics-bar-chart');
-    if (totI===0&&totE===0) {
-      chartEl.innerHTML = '<div style="width:100%;text-align:center;padding:20px 0;font-size:0.65rem;color:var(--text-muted)">no data yet — add income or expenses above</div>';
-    } else {
-      chartEl.innerHTML = months.map(m=>{
-        const iH=Math.max(Math.round((m.income/maxV)*96),2);
-        const eH=Math.max(Math.round((m.exp/maxV)*96),2);
-        return '<div class="bar-group"><div class="bar-pair">'+
-          '<div class="bar income-bar" style="height:'+iH+'px"><div class="bar-tooltip">'+m.income.toLocaleString('en-NG')+'</div></div>'+
-          '<div class="bar expense-bar" style="height:'+eH+'px"><div class="bar-tooltip">'+m.exp.toLocaleString('en-NG')+'</div></div>'+
-          '</div><div class="bar-label">'+m.sl+'</div></div>';
-      }).join('');
+    const bestM = months.length ? months.reduce((a,b)=>(b.income-b.expenses)>(a.income-a.expenses)?b:a) : null;
+    const highS = months.length ? months.reduce((a,b)=>b.expenses>a.expenses?b:a) : null;
+    const CAT_C = {food:'#e07b54',transport:'#7b68ee',utilities:'#4a9e7a',health:'#c9a84c',shopping:'#e05480',entertainment:'#54b0e0',savings:'#80e054',salary:'#4a9e7a',freelance:'#9e7a4a',other:'#6b6875'};
+
+    // Style tab buttons
+    document.querySelectorAll('.analytics-tab-btn').forEach(b=>{
+      const on = b.classList.contains('active');
+      b.style.cssText = 'flex:1;font-family:DM Mono,monospace;font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;padding:9px 6px;border-radius:7px;cursor:pointer;transition:all 0.15s;white-space:nowrap;' +
+        (on ? 'background:#1a1a1f;border:1px solid #2e2e38;color:#e8e6e1;' : 'background:none;border:none;color:#3d3b45;');
+    });
+
+    // Summary cards helper
+    const card = (label,valHtml,sub,extra)=>
+      '<div style="background:#131316;border:1px solid #222228;border-radius:12px;padding:14px 16px">'+
+      '<div style="font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:#3d3b45;margin-bottom:8px">'+label+'</div>'+
+      valHtml+
+      '<div style="font-size:0.58rem;color:#3d3b45;margin-top:4px">'+sub+'</div>'+
+      (extra||'')+
+      '</div>';
+
+    const r1=document.getElementById('analytics-row1');
+    const r2=document.getElementById('analytics-row2');
+    if(r1) r1.innerHTML=
+      card('total income','<div style="font-family:Instrument Serif,Georgia,serif;font-style:italic;font-size:1.3rem;line-height:1;color:#4a9e7a;margin-bottom:4px">'+fmt(totI)+'</div>',lbl)+
+      card('total spent','<div style="font-family:Instrument Serif,Georgia,serif;font-style:italic;font-size:1.3rem;line-height:1;color:#c05050;margin-bottom:4px">'+fmt(totE)+'</div>','avg '+fmt(avgE)+'/mo');
+    if(r2) r2.innerHTML=
+      card('net saved','<div style="font-family:Instrument Serif,Georgia,serif;font-style:italic;font-size:1.3rem;line-height:1;color:'+(bal>=0?'#4a9e7a':'#c05050')+';margin-bottom:4px">'+(bal<0?'-':'')+fmt(Math.abs(bal))+'</div>',savingsRate+'% savings rate',
+        '<div style="height:3px;background:#1a1a1f;border-radius:2px;overflow:hidden;margin-top:8px"><div style="height:100%;width:'+Math.max(0,Math.min(100,savingsRate))+'%;background:#4a9e7a;border-radius:2px"></div></div>')+
+      '<div style="background:#131316;border:1px solid #222228;border-radius:12px;padding:14px 16px">'+
+      '<div style="font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:#3d3b45;margin-bottom:10px">highlights</div>'+
+      '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<div><div style="font-size:0.55rem;color:#3d3b45;letter-spacing:0.06em;margin-bottom:2px">best month</div><div style="font-size:0.75rem;color:#4a9e7a">'+(bestM?bestM.label:'—')+'</div></div>'+
+      '<div><div style="font-size:0.55rem;color:#3d3b45;letter-spacing:0.06em;margin-bottom:2px">highest spend</div><div style="font-size:0.75rem;color:#c05050">'+(highS?highS.label:'—')+'</div></div>'+
+      '</div></div>';
+
+    // Chart title & subtitle
+    const ct=document.getElementById('analytics-chart-title');
+    const cs=document.getElementById('analytics-chart-sub');
+    if(ct) ct.textContent='income vs expenses';
+    if(cs) cs.textContent='monthly breakdown · '+lbl;
+
+    // Bar chart
+    const chartEl=document.getElementById('analytics-bar-chart');
+    if(chartEl){
+      if(totI===0&&totE===0){chartEl.innerHTML='<div style="width:100%;text-align:center;padding:20px 0;font-size:0.65rem;color:#3d3b45">no data yet — add income or expenses above</div>';}
+      else{
+        const maxV=Math.max(...months.map(m=>Math.max(m.income,m.expenses)),1);
+        chartEl.innerHTML=months.map(m=>{
+          const iH=Math.max(Math.round((m.income/maxV)*118),2);
+          const eH=Math.max(Math.round((m.expenses/maxV)*118),2);
+          return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:20px">'+
+            '<div style="display:flex;align-items:flex-end;gap:2px;height:118px;width:100%;justify-content:center">'+
+            '<div style="border-radius:3px 3px 0 0;background:#4a9e7a;opacity:0.82;flex:1;max-width:14px;height:'+iH+'px" title="'+fmt(m.income)+'"></div>'+
+            '<div style="border-radius:3px 3px 0 0;background:#c05050;opacity:0.82;flex:1;max-width:14px;height:'+eH+'px" title="'+fmt(m.expenses)+'"></div>'+
+            '</div><div style="font-size:0.5rem;color:#3d3b45;text-align:center">'+m.sl+'</div></div>';
+        }).join('');
+      }
     }
-    const CAT_COLORS={food:'#e07b54',transport:'#7b68ee',utilities:'#4a9e7a',health:'#c9a84c',shopping:'#e05480',entertainment:'#54b0e0',savings:'#80e054',salary:'#4a9e7a',freelance:'#9e7a4a',other:'#6b6875'};
+
+    // Savings SVG line
+    const svgEl=document.getElementById('savings-svg');
+    const subEl=document.getElementById('savings-line-sub');
+    if(svgEl){
+      const savings=months.map(m=>m.income-m.expenses);
+      const maxS=Math.max(...savings.map(Math.abs),1);
+      const W=600,H=70,pad=10;
+      const pts=savings.map((s,i)=>{const x=pad+(i/(months.length-1||1))*(W-pad*2);const y=H/2-(s/maxS)*(H/2-pad);return[x,y];});
+      const line=pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+      const area=line+' L'+pts[pts.length-1][0].toFixed(1)+','+H+' L'+pts[0][0].toFixed(1)+','+H+' Z';
+      svgEl.innerHTML=
+        '<line x1="'+pad+'" y1="'+(H/2)+'" x2="'+(W-pad)+'" y2="'+(H/2)+'" stroke="#222228" stroke-width="1"/>'+
+        '<path d="'+area+'" fill="rgba(123,104,238,0.08)"/>'+
+        '<path d="'+line+'" fill="none" stroke="#7b68ee" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'+
+        pts.map((p,i)=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3.5" fill="#7b68ee" stroke="#0d0d0f" stroke-width="1.5"/><text x="'+p[0].toFixed(1)+'" y="'+(H+16)+'" font-size="7" fill="#3d3b45" text-anchor="middle" font-family="monospace">'+months[i].sl+'</text>').join('');
+      if(subEl) subEl.textContent=totI>0?'total saved: '+fmt(bal)+' · '+lbl:'how much you kept each month';
+    }
+
+    // Top cats
     const keys=months.map(m=>m.key);
     const catT={};
     expenses.filter(e=>e.type==='expense'&&keys.includes(e.month)).forEach(e=>{catT[e.cat]=(catT[e.cat]||0)+e.amount;});
     const sorted=Object.entries(catT).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const catsEl=document.getElementById('analytics-cats-list');
-    if(!sorted.length){catsEl.innerHTML='<div style="font-size:0.65rem;color:var(--text-muted);padding:8px 0">no spending data for this period</div>';}
-    else{
-      const mx=sorted[0][1];
-      catsEl.innerHTML=sorted.map(([cat,amt],i)=>
-        '<div class="top-cat-row">'+
-        '<div class="top-cat-rank">'+(i+1)+'</div>'+
-        '<div class="top-cat-name">'+cat+'</div>'+
-        '<div class="top-cat-track"><div class="top-cat-fill" style="width:'+(amt/mx*100).toFixed(1)+'%;background:'+(CAT_COLORS[cat]||'#6b6875')+'"></div></div>'+
-        '<div class="top-cat-amt">'+fmt(amt)+'</div>'+
-        '</div>').join('');
-    }
+    const cEl=document.getElementById('analytics-cats-list');
+    if(!cEl) return;
+    if(!sorted.length){cEl.innerHTML='<div style="font-size:0.65rem;color:#3d3b45;padding:8px 0">no spending data for this period</div>';return;}
+    const mx=sorted[0][1];
+    cEl.innerHTML=sorted.map(([cat,amt],i)=>
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:'+(i===sorted.length-1?'0':'12')+'px">'+
+      '<div style="font-size:0.58rem;color:#3d3b45;width:12px;text-align:center;flex-shrink:0">'+(i+1)+'</div>'+
+      '<div style="width:8px;height:8px;border-radius:50%;background:'+(CAT_C[cat]||'#6b6875')+';flex-shrink:0"></div>'+
+      '<div style="font-size:0.7rem;color:#6b6875;width:90px;flex-shrink:0">'+cat+'</div>'+
+      '<div style="flex:1;height:5px;background:#1a1a1f;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(amt/mx*100).toFixed(1)+'%;background:'+(CAT_C[cat]||'#6b6875')+';border-radius:3px"></div></div>'+
+      '<div style="font-size:0.62rem;color:#6b6875;flex-shrink:0;width:72px;text-align:right">'+fmt(amt)+'</div>'+
+      '<div style="font-size:0.55rem;color:#3d3b45;width:26px;text-align:right;flex-shrink:0">'+Math.round(amt/totE*100)+'%</div>'+
+      '</div>').join('');
   }
 
   render();
