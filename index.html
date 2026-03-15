@@ -1309,13 +1309,13 @@
   function renderAnalytics() {
     const months = getMonthsData(analyticsPeriod);
     const totI = months.reduce((s,m)=>s+m.income,0);
-    const totE = months.reduce((s,m)=>s+m.expenses,0);
+    const totE = months.reduce((s,m)=>s+m.exp,0);
     const bal = totI-totE;
     const savingsRate = totI>0?Math.round((bal/totI)*100):0;
     const avgE = Math.round(totE/analyticsPeriod);
     const lbl = analyticsPeriod===12?'last 12 months':'last '+analyticsPeriod+' months';
-    const bestM = months.length ? months.reduce((a,b)=>(b.income-b.expenses)>(a.income-a.expenses)?b:a) : null;
-    const highS = months.length ? months.reduce((a,b)=>b.expenses>a.expenses?b:a) : null;
+    const bestM = months.length ? months.reduce((a,b)=>(b.income-b.exp)>(a.income-a.exp)?b:a) : null;
+    const highS = months.length ? months.reduce((a,b)=>b.exp>a.exp?b:a) : null;
     const CAT_C = {food:'#e07b54',transport:'#7b68ee',utilities:'#4a9e7a',health:'#c9a84c',shopping:'#e05480',entertainment:'#54b0e0',savings:'#80e054',salary:'#4a9e7a',freelance:'#9e7a4a',other:'#6b6875'};
 
     // Style tab buttons
@@ -1360,14 +1360,14 @@
     if(chartEl){
       if(totI===0&&totE===0){chartEl.innerHTML='<div style="width:100%;text-align:center;padding:20px 0;font-size:0.65rem;color:#3d3b45">no data yet — add income or expenses above</div>';}
       else{
-        const maxV=Math.max(...months.map(m=>Math.max(m.income,m.expenses)),1);
+        const maxV=Math.max(...months.map(m=>Math.max(m.income,m.exp)),1);
         chartEl.innerHTML=months.map(m=>{
           const iH=Math.max(Math.round((m.income/maxV)*118),2);
-          const eH=Math.max(Math.round((m.expenses/maxV)*118),2);
+          const eH=Math.max(Math.round((m.exp/maxV)*118),2);
           return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:20px">'+
             '<div style="display:flex;align-items:flex-end;gap:2px;height:118px;width:100%;justify-content:center">'+
             '<div style="border-radius:3px 3px 0 0;background:#4a9e7a;opacity:0.82;flex:1;max-width:14px;height:'+iH+'px" title="'+fmt(m.income)+'"></div>'+
-            '<div style="border-radius:3px 3px 0 0;background:#c05050;opacity:0.82;flex:1;max-width:14px;height:'+eH+'px" title="'+fmt(m.expenses)+'"></div>'+
+            '<div style="border-radius:3px 3px 0 0;background:#c05050;opacity:0.82;flex:1;max-width:14px;height:'+eH+'px" title="'+fmt(m.exp)+'"></div>'+
             '</div><div style="font-size:0.5rem;color:#3d3b45;text-align:center">'+m.sl+'</div></div>';
         }).join('');
       }
@@ -1377,7 +1377,7 @@
     const svgEl=document.getElementById('savings-svg');
     const subEl=document.getElementById('savings-line-sub');
     if(svgEl){
-      const savings=months.map(m=>m.income-m.expenses);
+      const savings=months.map(m=>m.income-m.exp);
       const maxS=Math.max(...savings.map(Math.abs),1);
       const W=600,H=70,pad=10;
       const pts=savings.map((s,i)=>{const x=pad+(i/(months.length-1||1))*(W-pad*2);const y=H/2-(s/maxS)*(H/2-pad);return[x,y];});
