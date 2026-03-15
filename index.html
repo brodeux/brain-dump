@@ -744,6 +744,30 @@
       </table>
     </div>
 
+
+    <!-- Analytics Overview -->
+    <div class="analytics-section">
+      <div class="section-label">overview</div>
+      <div class="analytics-tabs">
+        <button class="analytics-tab-btn active" onclick="setAnalyticsPeriod(3,this)">3 months</button>
+        <button class="analytics-tab-btn" onclick="setAnalyticsPeriod(6,this)">6 months</button>
+        <button class="analytics-tab-btn" onclick="setAnalyticsPeriod(12,this)">yearly</button>
+      </div>
+      <div class="analytics-summary-row" id="analytics-cards"></div>
+      <div class="bar-chart-wrap">
+        <div class="bar-chart-title" id="analytics-chart-title">income vs expenses</div>
+        <div class="bar-chart" id="analytics-bar-chart"></div>
+        <div class="bar-chart-legend">
+          <span><span class="legend-dot" style="background:var(--recur)"></span>income</span>
+          <span><span class="legend-dot" style="background:#c05050"></span>expenses</span>
+        </div>
+      </div>
+      <div class="top-cats">
+        <div class="top-cats-title">top spending categories</div>
+        <div id="analytics-cats-list"></div>
+      </div>
+    </div>
+
   </div><!-- end budget tab -->
 
 </div><!-- end container -->
@@ -762,6 +786,7 @@
   let editingId     = null;
   let expType       = 'expense';
 
+  let analyticsPeriod = 3;
   // Budget month state (year-month string "2026-03")
   const todayD  = new Date();
   let budgetYear  = todayD.getFullYear();
@@ -1250,6 +1275,7 @@
         </tr>`;
       }).join('');
     } else summaryEl.style.display='none';
+    renderAnalytics();
   }
 
   /* ── Helpers ── */
@@ -1264,8 +1290,73 @@
   document.getElementById('exp-amount').addEventListener('keydown', e => { if(e.key==='Enter') addExpense(); });
   document.getElementById('budget-limit-input').addEventListener('keydown', e => { if(e.key==='Enter') saveBudgetLimit(); });
 
+
+  /* Analytics */
+  function setAnalyticsPeriod(n, btn) {
+    analyticsPeriod = n;
+    document.querySelectorAll('.analytics-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderAnalytics();
+  }
+  function getMonthsData(n) {
+    const months = []; const now = new Date();
+    for (let i = n-1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      const label = d.toLocaleDateString('en-NG',{month:'short'});
+      const sl = n > 6 ? label.slice(0,1) : label;
+      const me = expenses.filter(e=>e.month===key);
+      months.push({key,label,sl,income:me.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0),exp:me.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0)});
+    }
+    return months;
+  }
+  function renderAnalytics() {
+    const months = getMonthsData(analyticsPeriod);
+    const totI = months.reduce((s,m)=>s+m.income,0);
+    const totE = months.reduce((s,m)=>s+m.exp,0);
+    const bal = totI - totE;
+    document.getElementById('analytics-cards').innerHTML =
+      '<div class="analytics-card"><div class="analytics-card-label">total income</div><div class="analytics-card-val income">'+fmt(totI)+'</div></div>'+
+      '<div class="analytics-card"><div class="analytics-card-label">total spent</div><div class="analytics-card-val expense">'+fmt(totE)+'</div></div>'+
+      '<div class="analytics-card"><div class="analytics-card-label">net balance</div><div class="analytics-card-val '+(bal>=0?'pos':'neg')+'">'+(bal<0?'-':'')+fmt(Math.abs(bal))+'</div></div>';
+    const maxV = Math.max(...months.map(m=>Math.max(m.income,m.exp)),1);
+    const lbl = analyticsPeriod===12?'last 12 months':'last '+analyticsPeriod+' months';
+    document.getElementById('analytics-chart-title').textContent = 'income vs expenses · '+lbl;
+    const chartEl = document.getElementById('analytics-bar-chart');
+    if (totI===0&&totE===0) {
+      chartEl.innerHTML = '<div style="width:100%;text-align:center;padding:20px 0;font-size:0.65rem;color:var(--text-muted)">no data yet — add income or expenses above</div>';
+    } else {
+      chartEl.innerHTML = months.map(m=>{
+        const iH=Math.max(Math.round((m.income/maxV)*96),2);
+        const eH=Math.max(Math.round((m.exp/maxV)*96),2);
+        return '<div class="bar-group"><div class="bar-pair">'+
+          '<div class="bar income-bar" style="height:'+iH+'px"><div class="bar-tooltip">'+m.income.toLocaleString('en-NG')+'</div></div>'+
+          '<div class="bar expense-bar" style="height:'+eH+'px"><div class="bar-tooltip">'+m.exp.toLocaleString('en-NG')+'</div></div>'+
+          '</div><div class="bar-label">'+m.sl+'</div></div>';
+      }).join('');
+    }
+    const CAT_COLORS={food:'#e07b54',transport:'#7b68ee',utilities:'#4a9e7a',health:'#c9a84c',shopping:'#e05480',entertainment:'#54b0e0',savings:'#80e054',salary:'#4a9e7a',freelance:'#9e7a4a',other:'#6b6875'};
+    const keys=months.map(m=>m.key);
+    const catT={};
+    expenses.filter(e=>e.type==='expense'&&keys.includes(e.month)).forEach(e=>{catT[e.cat]=(catT[e.cat]||0)+e.amount;});
+    const sorted=Object.entries(catT).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const catsEl=document.getElementById('analytics-cats-list');
+    if(!sorted.length){catsEl.innerHTML='<div style="font-size:0.65rem;color:var(--text-muted);padding:8px 0">no spending data for this period</div>';}
+    else{
+      const mx=sorted[0][1];
+      catsEl.innerHTML=sorted.map(([cat,amt],i)=>
+        '<div class="top-cat-row">'+
+        '<div class="top-cat-rank">'+(i+1)+'</div>'+
+        '<div class="top-cat-name">'+cat+'</div>'+
+        '<div class="top-cat-track"><div class="top-cat-fill" style="width:'+(amt/mx*100).toFixed(1)+'%;background:'+(CAT_COLORS[cat]||'#6b6875')+'"></div></div>'+
+        '<div class="top-cat-amt">'+fmt(amt)+'</div>'+
+        '</div>').join('');
+    }
+  }
+
   render();
   renderRecurring();
+  renderAnalytics();
 </script>
 </body>
 </html>
