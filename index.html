@@ -863,6 +863,14 @@
   }
 
   /* ── PWA Install Banner ── */
+  /* Hide install prompts on desktop and when already installed as PWA */
+  @media (min-width: 1024px) {
+    .install-banner, .ios-hint { display: none !important; }
+  }
+  @media (display-mode: standalone) {
+    .install-banner, .ios-hint { display: none !important; }
+  }
+
   .install-banner {
     position: fixed;
     bottom: 24px;
@@ -1012,28 +1020,6 @@
   <!-- ══════════ SETTINGS / BACKUP PANEL ══════════ -->
   <div class="settings-panel" id="settings-panel">
 
-    <div class="settings-title">appearance</div>
-
-    <!-- Theme toggle -->
-    <div class="settings-row" style="margin-bottom:20px">
-      <div class="settings-row-label">colour theme</div>
-      <div class="theme-toggle-row">
-        <button class="theme-pill" id="theme-dark" onclick="setTheme('dark')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-          dark
-        </button>
-        <button class="theme-pill" id="theme-light" onclick="setTheme('light')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          light
-        </button>
-        <button class="theme-pill" id="theme-device" onclick="setTheme('device')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-          device
-        </button>
-      </div>
-    </div>
-
-    <div class="backup-divider"></div>
     <div class="settings-title">data & backup</div>
 
     <!-- Stats row -->
@@ -2444,7 +2430,12 @@
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     deferredPrompt = e;
-    setTimeout(() => document.getElementById('install-banner').classList.add('visible'), 1800);
+    // Only show install banner on mobile and if not already standalone
+    const _standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const _mobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+    if (_mobile && !_standalone) {
+      setTimeout(() => document.getElementById('install-banner').classList.add('visible'), 1800);
+    }
   });
 
   function triggerInstall() {
@@ -2465,10 +2456,13 @@
     document.getElementById('install-banner').classList.remove('visible');
   });
 
-  // iOS — show manual steps if not already installed
+  // Detect context
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const isMobile = isIos || isAndroid;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
+  // iOS hint — only show on iOS Safari, not desktop, not already installed, not dismissed
   if (isIos && !isStandalone && !sessionStorage.getItem('bd_ios_dismissed')) {
     setTimeout(() => document.getElementById('ios-hint').classList.add('visible'), 2200);
   }
