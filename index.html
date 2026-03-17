@@ -21,6 +21,9 @@
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22braindump.%22%2C%22short_name%22%3A%22braindump%22%2C%22description%22%3A%22Tasks%2C%20habits%2C%20and%20budget%20in%20one%20dark%20calm%20space%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0d0f%22%2C%22theme_color%22%3A%22%230d0d0f%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%2520viewBox%3D'0%25200%2520512%2520512'%253E%253Crect%2520width%3D'512'%2520height%3D'512'%2520rx%3D'100'%2520fill%3D'%25230d0d0f'%2F%253E%253Ctext%2520x%3D'256'%2520y%3D'340'%2520font-size%3D'280'%2520text-anchor%3D'middle'%2520font-family%3D'Georgia%2Cserif'%2520font-style%3D'italic'%2520fill%3D'%25237b68ee'%253Eb%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1000,11 +1003,70 @@
   .theme-pill:hover { color: var(--text-dim); border-color: var(--border2); }
   .theme-pill.active { background: rgba(123,104,238,0.12); border-color: var(--accent); color: var(--accent); }
   .theme-pill svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .signin-screen{position:fixed;inset:0;background:var(--bg);z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeDown 0.4s ease both}
+  .signin-card{width:100%;max-width:380px}
+  .signin-logo{font-family:'Instrument Serif',serif;font-style:italic;font-size:2.4rem;color:var(--text);line-height:1;margin-bottom:6px}
+  .signin-logo span{color:var(--accent)}
+  .signin-tagline{font-size:0.62rem;color:var(--text-muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:36px}
+  .signin-title{font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:20px;display:flex;align-items:center;gap:10px}
+  .signin-title::after{content:'';flex:1;height:1px;background:var(--border)}
+  .signin-input{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:0.8rem;padding:12px 14px;border-radius:10px;outline:none;transition:border-color 0.15s;margin-bottom:10px;display:block}
+  .signin-input:focus{border-color:var(--accent)}
+  .signin-input::placeholder{color:var(--text-muted)}
+  .signin-btn{width:100%;background:var(--accent);border:none;color:white;font-family:'DM Mono',monospace;font-size:0.72rem;letter-spacing:0.08em;padding:13px;border-radius:10px;cursor:pointer;transition:all 0.15s;margin-bottom:10px}
+  .signin-btn:hover{filter:brightness(1.15)}
+  .signin-btn:disabled{opacity:0.5;cursor:not-allowed}
+  .signin-btn.google{background:var(--surface);border:1px solid var(--border2);color:var(--text-dim);display:flex;align-items:center;justify-content:center;gap:10px}
+  .signin-btn.google:hover{background:var(--surface2)}
+  .signin-divider{display:flex;align-items:center;gap:10px;margin:4px 0 10px;font-size:0.58rem;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase}
+  .signin-divider::before,.signin-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+  .signin-toggle{font-size:0.62rem;color:var(--text-muted);text-align:center;margin-top:14px}
+  .signin-toggle button{background:none;border:none;color:var(--accent);font-family:'DM Mono',monospace;font-size:0.62rem;cursor:pointer;text-decoration:underline}
+  .signin-error{font-size:0.62rem;color:#c05050;background:rgba(192,80,80,0.08);border:1px solid rgba(192,80,80,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:none}
+  .signin-error.show{display:block}
+  .signin-success{font-size:0.62rem;color:var(--recur);background:rgba(74,158,122,0.08);border:1px solid var(--recur-border);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:none}
+  .signin-success.show{display:block}
+  .signin-loading{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top:2px solid white;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto}
+  .user-bar{display:none;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin-bottom:16px;font-size:0.6rem;color:var(--text-muted)}
+  .user-bar.visible{display:flex}
+  .user-bar-email{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)}
+  .user-bar-sync{font-size:0.55rem;color:var(--recur)}
+  .user-bar-sync.syncing{color:var(--text-muted)}
+  .user-signout{background:none;border:none;color:var(--text-muted);font-family:'DM Mono',monospace;font-size:0.58rem;cursor:pointer;padding:2px 6px;transition:color 0.15s}
+  .user-signout:hover{color:#c05050}
+  .fb-setup{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:16px}
+  .fb-setup-title{font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
+  .fb-setup textarea{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:0.65rem;padding:10px;border-radius:8px;outline:none;resize:vertical;min-height:80px;margin-bottom:8px}
+  .fb-setup textarea:focus{border-color:var(--accent)}
 </style>
 </head>
 <body>
+<div id="signin-screen" class="signin-screen" style="display:none"><div class="signin-card">
+  <div class="signin-logo">braindump<span>.</span></div>
+  <div class="signin-tagline">one thing at a time — no rush, no pressure</div>
+  <div id="fb-setup-banner" class="fb-setup" style="display:none">
+    <div class="fb-setup-title">⚙ connect firebase first</div>
+    <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:10px;line-height:1.9">1. Go to <span style="color:var(--accent)">console.firebase.google.com</span><br>2. New project → Add Web App → copy config<br>3. Enable Auth (Email + Google) + Firestore</div>
+    <textarea id="fb-config-input" placeholder="paste firebaseConfig here"></textarea>
+    <button class="signin-btn" onclick="saveFbConfig()" style="margin-bottom:0">save &amp; connect</button>
+  </div>
+  <div id="signin-form-area">
+    <div class="signin-title" id="signin-mode-title">sign in</div>
+    <div class="signin-error" id="signin-error"></div>
+    <div class="signin-success" id="signin-success"></div>
+    <input class="signin-input" id="signin-email" type="email" placeholder="email address" autocomplete="email"/>
+    <input class="signin-input" id="signin-password" type="password" placeholder="password" autocomplete="current-password"/>
+    <input class="signin-input" id="signin-password2" type="password" placeholder="confirm password" style="display:none"/>
+    <button class="signin-btn" id="signin-submit-btn" onclick="handleSignIn()"><span id="signin-btn-text">sign in</span><div class="signin-loading" id="signin-loading"></div></button>
+    <div class="signin-divider">or</div>
+    <button class="signin-btn google" onclick="handleGoogleSignIn()"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>continue with google</button>
+    <div class="signin-toggle"><span id="signin-toggle-text">don't have an account?</span> <button onclick="toggleSignInMode()" id="signin-toggle-btn">sign up</button></div>
+    <div style="text-align:center;margin-top:10px"><button onclick="skipSignIn()" style="background:none;border:none;color:var(--text-muted);font-family:'DM Mono',monospace;font-size:0.58rem;cursor:pointer;text-decoration:underline">continue without account</button></div>
+  </div>
+</div></div>
 <div class="container">
 
+  <div class="user-bar" id="user-bar"><span>👤</span><span class="user-bar-email" id="user-bar-email"></span><span class="user-bar-sync" id="user-bar-sync">synced ✓</span><button class="user-signout" onclick="signOut()">sign out</button></div>
   <header>
     <div class="logo">braindump<span>.</span></div>
     <div class="tagline">one thing at a time — no rush, no pressure</div>
@@ -1382,6 +1444,7 @@
     localStorage.setItem('bd_recurring',  JSON.stringify(recurring));
     localStorage.setItem('bd_expenses',   JSON.stringify(expenses));
     localStorage.setItem('bd_budget_limits', JSON.stringify(budgetLimits));
+    cloudSave();
   }
 
   function fmt(n) {
@@ -2264,6 +2327,7 @@
 
   // Run immediately so there's no flash of wrong theme
   initTheme();
+  bootAuth();
 
   /* ════════════════════════════════
      SETTINGS / BACKUP & RESTORE
@@ -2484,6 +2548,164 @@
     document.getElementById('ios-hint').classList.remove('visible');
     sessionStorage.setItem('bd_ios_dismissed', '1');
   }
+
+  /* ═══ FIREBASE AUTH + CLOUD SYNC ═══ */
+  let _fa = null, _fb = null, _fd = null, _cu = null;
+  let _si = false, _sm = 'signin', _st = null;
+
+  function getFbCfg() {
+    try { const s = localStorage.getItem('bd_fb_cfg'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+  }
+
+  function saveFbConfig() {
+    const raw = (document.getElementById('fb-config-input')?.value || '').trim();
+    if (!raw) return;
+    try {
+      let c = raw.replace(/^(?:const|let|var)\s+\w+\s*=\s*/,'').replace(/;\s*$/,'').trim();
+      c = c.replace(/([{,]\s*)([a-zA-Z_]\w*)\s*:/g, '$1"$2":');
+      const cfg = JSON.parse(c);
+      localStorage.setItem('bd_fb_cfg', JSON.stringify(cfg));
+      initFb(cfg);
+      showSIErr(''); showSIOk('Connected! Sign in below.');
+      document.getElementById('fb-setup-banner').style.display = 'none';
+      document.getElementById('signin-form-area').style.display = 'block';
+    } catch(e) { showSIErr('Could not parse — paste the full { apiKey:... } object'); }
+  }
+
+  function initFb(cfg) {
+    try {
+      if (_fa) _fa.delete().catch(() => {});
+      _fa = firebase.initializeApp(cfg, 'bd' + Date.now());
+      _fb = _fa.auth(); _fd = _fa.firestore();
+      _fb.onAuthStateChanged(onAuth);
+      return true;
+    } catch(e) { console.error(e); return false; }
+  }
+
+  function onAuth(user) {
+    _cu = user;
+    if (user) {
+      hideSI();
+      document.getElementById('user-bar').classList.add('visible');
+      document.getElementById('user-bar-email').textContent = user.email || user.displayName || 'signed in';
+      setSyncSt('loading...', true); loadFb();
+    } else {
+      document.getElementById('user-bar').classList.remove('visible');
+      showSI();
+    }
+  }
+
+  function showSI() {
+    document.getElementById('signin-screen').style.display = 'flex';
+    const cfg = getFbCfg();
+    document.getElementById('fb-setup-banner').style.display = cfg ? 'none' : 'block';
+    document.getElementById('signin-form-area').style.display = cfg ? 'block' : 'none';
+  }
+  function hideSI() { document.getElementById('signin-screen').style.display = 'none'; }
+  function skipSignIn() { hideSI(); document.getElementById('user-bar').classList.remove('visible'); render(); renderRecurring(); renderAnalytics(); }
+
+  function toggleSignInMode() {
+    _sm = _sm === 'signin' ? 'signup' : 'signin';
+    const su = _sm === 'signup';
+    document.getElementById('signin-mode-title').textContent = su ? 'create account' : 'sign in';
+    document.getElementById('signin-btn-text').textContent = su ? 'create account' : 'sign in';
+    document.getElementById('signin-password2').style.display = su ? 'block' : 'none';
+    document.getElementById('signin-toggle-text').textContent = su ? 'already have an account?' : "don't have an account?";
+    document.getElementById('signin-toggle-btn').textContent = su ? 'sign in' : 'sign up';
+    showSIErr('');
+  }
+
+  function setSILoad(on) {
+    _si = on;
+    document.getElementById('signin-submit-btn').disabled = on;
+    document.getElementById('signin-btn-text').style.display = on ? 'none' : 'inline';
+    document.getElementById('signin-loading').style.display = on ? 'block' : 'none';
+  }
+  function showSIErr(m) { const e = document.getElementById('signin-error'); e.textContent = m; e.className = 'signin-error' + (m ? ' show' : ''); }
+  function showSIOk(m) { const e = document.getElementById('signin-success'); e.textContent = m; e.className = 'signin-success' + (m ? ' show' : ''); }
+
+  async function handleSignIn() {
+    if (_si || !_fb) return;
+    const em = document.getElementById('signin-email').value.trim();
+    const pw = document.getElementById('signin-password').value;
+    if (!em || !pw) { showSIErr('please enter email and password'); return; }
+    setSILoad(true); showSIErr('');
+    try {
+      if (_sm === 'signup') {
+        const pw2 = document.getElementById('signin-password2').value;
+        if (pw !== pw2) { showSIErr('passwords do not match'); setSILoad(false); return; }
+        await _fb.createUserWithEmailAndPassword(em, pw); await saveFb();
+      } else { await _fb.signInWithEmailAndPassword(em, pw); }
+    } catch(e) {
+      const msgs = {
+        'auth/user-not-found': 'no account with this email',
+        'auth/wrong-password': 'incorrect password',
+        'auth/email-already-in-use': 'email in use — try signing in',
+        'auth/weak-password': 'password needs 6+ characters',
+        'auth/invalid-email': 'invalid email address',
+        'auth/too-many-requests': 'too many attempts — try later',
+        'auth/invalid-credential': 'incorrect email or password'
+      };
+      showSIErr(msgs[e.code] || e.message); setSILoad(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (!_fb) return;
+    try { await _fb.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+    catch(e) { if (e.code !== 'auth/popup-closed-by-user') showSIErr(e.message); }
+  }
+
+  function signOut() {
+    if (!_fb) return;
+    if (!confirm('Sign out? Your data stays saved in the cloud.')) return;
+    _fb.signOut();
+  }
+
+  function setSyncSt(msg, on) {
+    const el = document.getElementById('user-bar-sync'); if (!el) return;
+    el.textContent = msg; el.className = 'user-bar-sync' + (on ? ' syncing' : '');
+  }
+
+  async function loadFb() {
+    if (!_fd || !_cu) return;
+    try {
+      const doc = await _fd.collection('users').doc(_cu.uid).get();
+      if (doc.exists) {
+        const d = doc.data();
+        if (Array.isArray(d.tasks)) tasks = d.tasks;
+        if (Array.isArray(d.recurring)) recurring = d.recurring;
+        if (Array.isArray(d.expenses)) expenses = d.expenses;
+        if (d.budgetLimits && typeof d.budgetLimits === 'object') budgetLimits = d.budgetLimits;
+        save(); render(); renderRecurring(); renderAnalytics(); setSyncSt('synced ✓');
+      } else { await saveFb(); render(); renderRecurring(); renderAnalytics(); setSyncSt('synced ✓'); }
+    } catch(e) { console.error(e); setSyncSt('offline'); render(); renderRecurring(); renderAnalytics(); }
+  }
+
+  async function saveFb() {
+    if (!_fd || !_cu) return; setSyncSt('saving...', true);
+    try {
+      await _fd.collection('users').doc(_cu.uid).set({ tasks, recurring, expenses, budgetLimits, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      setSyncSt('synced ✓');
+    } catch(e) { console.error(e); setSyncSt('sync failed'); }
+  }
+
+  function cloudSave() {
+    if (!_cu) return;
+    clearTimeout(_st); setSyncSt('saving...', true);
+    _st = setTimeout(() => saveFb(), 1500);
+  }
+
+  function bootAuth() {
+    const cfg = getFbCfg();
+    if (cfg) { if (!initFb(cfg)) showSI(); } else showSI();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    ['signin-email','signin-password','signin-password2'].forEach(id => {
+      document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') handleSignIn(); });
+    });
+  });
 
 </script>
 
