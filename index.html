@@ -2589,7 +2589,9 @@
       if(_fa)_fa.delete().catch(()=>{});
       _fa=firebase.initializeApp(_FBCFG,'bd'+Date.now());
       _fb=_fa.auth();_fd=_fa.firestore();
-      _fb.onAuthStateChanged(onAuth);return true;
+      _fb.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch(()=>{}).finally(()=>_fb.onAuthStateChanged(onAuth));
+      return true;
     }catch(e){console.error(e);return false;}
   }
 
@@ -2662,14 +2664,16 @@
       const doc=await _fd.collection('users').doc(_cu.uid).get();
       if(doc.exists){
         const d=doc.data();
-        if(Array.isArray(d.tasks))tasks=d.tasks;
-        if(Array.isArray(d.recurring))recurring=d.recurring;
-        if(Array.isArray(d.expenses))expenses=d.expenses;
-        if(d.budgetLimits&&typeof d.budgetLimits==='object')budgetLimits=d.budgetLimits;
-        if(d.dailySpend&&typeof d.dailySpend==='object')dailySpend=d.dailySpend;
-        save();render();renderRecurring();renderAnalytics();setSyncSt('synced ✓');
-      }else{await saveFb();render();renderRecurring();renderAnalytics();setSyncSt('synced ✓');}
-    }catch(e){console.error(e);setSyncSt('offline');render();renderRecurring();renderAnalytics();}
+        if(Array.isArray(d.tasks))     tasks=d.tasks;
+        if(Array.isArray(d.recurring)) recurring=d.recurring;
+        if(Array.isArray(d.expenses))  expenses=d.expenses;
+        if(d.budgetLimits&&typeof d.budgetLimits==='object') budgetLimits=d.budgetLimits;
+        if(d.dailySpend&&typeof d.dailySpend==='object')     dailySpend=d.dailySpend;
+        save();render();renderRecurring();renderBudget();setSyncSt('synced ✓');
+      }else{
+        await saveFb();render();renderRecurring();renderBudget();setSyncSt('synced ✓');
+      }
+    }catch(e){console.error(e);setSyncSt('offline');render();renderRecurring();renderBudget();}
   }
 
   async function saveFb(){
@@ -2736,9 +2740,16 @@
     if(!inp) return;
     const val = parseFloat(inp.value);
     const key = budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    if(isNaN(val)||val<=0) delete dailySpend[key]; else dailySpend[key]=val;
-    save();
-    renderDailyGrid();
+    expenses = expenses.filter(e => e.dailyKey !== key);
+    if(isNaN(val)||val<=0){
+      delete dailySpend[key];
+    }else{
+      dailySpend[key]=val;
+      expenses.push({id:'daily-'+key, desc:'Day '+day, cat:'other', amount:val, type:'expense',
+        month:budgetYear+'-'+String(budgetMonth+1).padStart(2,'0'),
+        date:new Date(budgetYear,budgetMonth,day).toISOString(), dailyKey:key});
+    }
+    save(); renderBudget();
   }
 </script>
 
