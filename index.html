@@ -2625,113 +2625,141 @@
 
   let _fa=null,_fb=null,_fd=null,_cu=null,_si=false,_sm='signin',_st=null;
 
+  var _authReady = false; // true once getRedirectResult has resolved
+  var _authGrace = true;  // suppress showSI for 3s after load
+  setTimeout(function(){ _authGrace = false; }, 3000);
+
   function initFb(){
     try{
       if(_fa){try{_fa.delete();}catch(e){}}
-      _fa=firebase.initializeApp(_FBCFG,"bd"+Date.now());
-      _fb=_fa.auth();
-      _fd=_fa.firestore();
+      _fa = firebase.initializeApp(_FBCFG, "bd"+Date.now());
+      _fb = _fa.auth();
+      _fd = _fa.firestore();
       _fb.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
         .catch(function(){})
         .finally(function(){
+          // Check redirect result FIRST, THEN attach auth listener
           _fb.getRedirectResult()
             .then(function(res){
-              if(res&&res.user) console.log("redirect ok:",res.user.email);
+              if(res && res.user){
+                console.log("Google redirect sign-in:", res.user.email);
+              }
             })
             .catch(function(e){
-              if(e.code&&e.code!=="auth/no-auth-event"&&e.code!=="auth/operation-not-supported-in-this-environment"){
-                console.warn("redirectResult:",e.code);
+              if(e.code && e.code !== "auth/no-auth-event" &&
+                 e.code !== "auth/operation-not-supported-in-this-environment"){
+                console.warn("redirectResult:", e.code);
               }
             })
             .finally(function(){
+              _authReady = true;
               _fb.onAuthStateChanged(onAuth);
             });
         });
       return true;
-    }catch(e){console.error("initFb:",e);return false;}
+    }catch(e){ console.error("initFb:", e); return false; }
   }
 
   function onAuth(user){
-    _cu=user;
-    var bar=document.getElementById("user-bar");
-    var emailEl=document.getElementById("user-bar-email");
-    var syncEl=document.getElementById("user-bar-sync");
+    _cu = user;
+    var bar    = document.getElementById("user-bar");
+    var emailEl= document.getElementById("user-bar-email");
+    var syncEl = document.getElementById("user-bar-sync");
     if(user){
+      // User is signed in
       hideSI();
-      if(bar) bar.classList.add("visible");
-      if(emailEl) emailEl.textContent=user.email||user.displayName||"signed in";
-      if(syncEl){syncEl.textContent="loading...";syncEl.className="user-bar-sync syncing";}
+      if(bar)     bar.classList.add("visible");
+      if(emailEl) emailEl.textContent = user.email || user.displayName || "signed in";
+      if(syncEl){ syncEl.textContent = "loading..."; syncEl.className = "user-bar-sync syncing"; }
       loadFb();
-    }else{
+    } else {
+      // User is signed out — only show sign-in if auth is ready and grace period over
       if(bar) bar.classList.remove("visible");
-      if(syncEl){syncEl.textContent="";syncEl.className="user-bar-sync";}
-      showSI();
+      if(syncEl){ syncEl.textContent = ""; syncEl.className = "user-bar-sync"; }
+      if(_authReady && !_authGrace){
+        showSI();
+      }
+      // If still in grace period, set a check for when it ends
+      if(_authGrace){
+        setTimeout(function(){
+          if(!_cu) showSI();
+        }, 3100);
+      }
     }
   }
 
-  function showSI(){var el=document.getElementById("signin-screen");if(el)el.style.display="flex";}
-  function hideSI(){var el=document.getElementById("signin-screen");if(el)el.style.display="none";}
-  function skipSignIn(){hideSI();var bar=document.getElementById("user-bar");if(bar)bar.classList.remove("visible");render();renderRecurring();renderBudget();}
+  function showSI(){ var el=document.getElementById("signin-screen"); if(el) el.style.display="flex"; }
+  function hideSI(){ var el=document.getElementById("signin-screen"); if(el) el.style.display="none"; }
+  function skipSignIn(){
+    hideSI();
+    var bar=document.getElementById("user-bar"); if(bar) bar.classList.remove("visible");
+    render(); renderRecurring(); renderBudget();
+  }
 
   function toggleSignInMode(){
-    _sm=_sm==="signin"?"signup":"signin";var su=_sm==="signup";
-    var mt=document.getElementById("signin-mode-title");if(mt)mt.textContent=su?"create account":"sign in";
-    var bt=document.getElementById("signin-btn-text");if(bt)bt.textContent=su?"create account":"sign in";
-    var p2=document.getElementById("signin-password2");if(p2)p2.style.display=su?"block":"none";
-    var tt=document.getElementById("signin-toggle-text");if(tt)tt.textContent=su?"already have an account?":"don't have an account?";
-    var tb=document.getElementById("signin-toggle-btn");if(tb)tb.textContent=su?"sign in":"sign up";
+    _sm = _sm==="signin" ? "signup" : "signin"; var su = _sm==="signup";
+    var mt=document.getElementById("signin-mode-title"); if(mt) mt.textContent = su?"create account":"sign in";
+    var bt=document.getElementById("signin-btn-text");   if(bt) bt.textContent = su?"create account":"sign in";
+    var p2=document.getElementById("signin-password2");  if(p2) p2.style.display = su?"block":"none";
+    var tt=document.getElementById("signin-toggle-text");if(tt) tt.textContent = su?"already have an account?":"don't have an account?";
+    var tb=document.getElementById("signin-toggle-btn"); if(tb) tb.textContent = su?"sign in":"sign up";
     showSIErr("");
   }
 
   function setSILoad(on){
-    _si=on;
-    var btn=document.getElementById("signin-submit-btn");if(btn)btn.disabled=on;
-    var bt=document.getElementById("signin-btn-text");if(bt)bt.style.display=on?"none":"inline";
-    var ld=document.getElementById("signin-loading");if(ld)ld.style.display=on?"block":"none";
+    _si = on;
+    var btn=document.getElementById("signin-submit-btn"); if(btn) btn.disabled = on;
+    var bt =document.getElementById("signin-btn-text");   if(bt)  bt.style.display = on?"none":"inline";
+    var ld =document.getElementById("signin-loading");    if(ld)  ld.style.display = on?"block":"none";
   }
-  function showSIErr(m){var e=document.getElementById("signin-error");if(e){e.textContent=m;e.className="signin-error"+(m?" show":"");}}
-  function showSIOk(m){var e=document.getElementById("signin-success");if(e){e.textContent=m;e.className="signin-success"+(m?" show":"");}}
+  function showSIErr(m){ var e=document.getElementById("signin-error");   if(e){ e.textContent=m; e.className="signin-error"+(m?" show":""); } }
+  function showSIOk(m){  var e=document.getElementById("signin-success"); if(e){ e.textContent=m; e.className="signin-success"+(m?" show":""); } }
 
   function handleSignIn(){
-    if(_si||!_fb) return;
+    if(_si || !_fb) return;
     var emEl=document.getElementById("signin-email");
     var pwEl=document.getElementById("signin-password");
-    var em=emEl?emEl.value.trim():"";
-    var pw=pwEl?pwEl.value:"";
-    if(!em||!pw){showSIErr("please enter email and password");return;}
-    setSILoad(true);showSIErr("");
-    var p=_sm==="signup"
-      ?(function(){
+    var em = emEl ? emEl.value.trim() : "";
+    var pw = pwEl ? pwEl.value : "";
+    if(!em || !pw){ showSIErr("please enter email and password"); return; }
+    setSILoad(true); showSIErr("");
+    var p = _sm==="signup"
+      ? (function(){
           var pw2El=document.getElementById("signin-password2");
-          var pw2=pw2El?pw2El.value:"";
-          if(pw!==pw2){showSIErr("passwords do not match");setSILoad(false);return Promise.resolve();}
-          return _fb.createUserWithEmailAndPassword(em,pw).then(function(){return saveFb();});
+          var pw2 = pw2El ? pw2El.value : "";
+          if(pw !== pw2){ showSIErr("passwords do not match"); setSILoad(false); return Promise.resolve(); }
+          return _fb.createUserWithEmailAndPassword(em, pw).then(function(){ return saveFb(); });
         })()
-      :_fb.signInWithEmailAndPassword(em,pw);
+      : _fb.signInWithEmailAndPassword(em, pw);
     p.catch(function(e){
-      var msgs={"auth/user-not-found":"no account with this email","auth/wrong-password":"incorrect password",
-        "auth/email-already-in-use":"email in use — try signing in","auth/weak-password":"password needs 6+ characters",
-        "auth/invalid-email":"invalid email","auth/too-many-requests":"too many attempts — try later",
-        "auth/invalid-credential":"incorrect email or password"};
-      showSIErr(msgs[e.code]||e.message);setSILoad(false);
+      var msgs = {
+        "auth/user-not-found":        "no account with this email",
+        "auth/wrong-password":        "incorrect password",
+        "auth/email-already-in-use":  "email in use — try signing in",
+        "auth/weak-password":         "password needs 6+ characters",
+        "auth/invalid-email":         "invalid email",
+        "auth/too-many-requests":     "too many attempts — try later",
+        "auth/invalid-credential":    "incorrect email or password"
+      };
+      showSIErr(msgs[e.code] || e.message); setSILoad(false);
     });
   }
 
   function handleGoogleSignIn(){
     if(!_fb) return;
-    var provider=new firebase.auth.GoogleAuthProvider();
-    var isStandalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||window.navigator.standalone===true;
-    var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-    var isSafari=/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    if(isIOS||isSafari||isStandalone){
+    var provider = new firebase.auth.GoogleAuthProvider();
+    var isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
+    var isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    var isSafari  = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if(isIOS || isSafari || isStandalone){
       var syncEl=document.getElementById("user-bar-sync");
-      if(syncEl){syncEl.textContent="redirecting...";syncEl.className="user-bar-sync syncing";}
-      _fb.signInWithRedirect(provider).catch(function(e){showSIErr(e.message);});
-    }else{
+      if(syncEl){ syncEl.textContent="redirecting..."; syncEl.className="user-bar-sync syncing"; }
+      _fb.signInWithRedirect(provider).catch(function(e){ showSIErr(e.message); });
+    } else {
       _fb.signInWithPopup(provider).catch(function(e){
-        if(e.code==="auth/popup-blocked"||e.code==="auth/cancelled-popup-request"){
+        if(e.code==="auth/popup-blocked" || e.code==="auth/cancelled-popup-request"){
           _fb.signInWithRedirect(provider);
-        }else if(e.code!=="auth/popup-closed-by-user"){
+        } else if(e.code !== "auth/popup-closed-by-user"){
           showSIErr(e.message);
         }
       });
@@ -2741,82 +2769,79 @@
   function signOut(){
     if(!_fb) return;
     if(!confirm("Sign out? Your data stays saved in the cloud.")) return;
-    if(window._fbUnsub){window._fbUnsub();window._fbUnsub=null;}
+    if(window._fbUnsub){ window._fbUnsub(); window._fbUnsub=null; }
     _fb.signOut();
   }
 
-  function setSyncSt(msg,on){
-    var el=document.getElementById("user-bar-sync");if(!el)return;
-    el.textContent=msg;el.className="user-bar-sync"+(on?" syncing":"");
+  function setSyncSt(msg, on){
+    var el=document.getElementById("user-bar-sync"); if(!el) return;
+    el.textContent=msg; el.className="user-bar-sync"+(on?" syncing":"");
   }
 
   function loadFb(){
-    if(!_fd||!_cu){return;}
-    setSyncSt("loading...",true);
-    if(window._fbUnsub){window._fbUnsub();window._fbUnsub=null;}
-    window._fbUnsub=_fd.collection("users").doc(_cu.uid).onSnapshot(
+    if(!_fd || !_cu) return;
+    setSyncSt("loading...", true);
+    if(window._fbUnsub){ window._fbUnsub(); window._fbUnsub=null; }
+    window._fbUnsub = _fd.collection("users").doc(_cu.uid).onSnapshot(
       function(doc){
         if(doc.exists){
-          var d=doc.data();
-          var serverTime=d.updatedAt?d.updatedAt.toMillis():0;
-          // Only overwrite local if server has newer data OR local is empty
-          var localIsEmpty=(!expenses||expenses.length===0)&&(!tasks||tasks.length===0);
-          if(serverTime>0||localIsEmpty){
+          var d = doc.data();
+          var serverTime = d.updatedAt ? d.updatedAt.toMillis() : 0;
+          var localEmpty = (!expenses||expenses.length===0) && (!tasks||tasks.length===0);
+          if(serverTime > 0 || localEmpty){
             if(Array.isArray(d.tasks))     tasks=d.tasks;
             if(Array.isArray(d.recurring)) recurring=d.recurring;
             if(Array.isArray(d.expenses))  expenses=d.expenses;
-            if(d.budgetLimits&&typeof d.budgetLimits==="object") budgetLimits=d.budgetLimits;
-            if(d.dailySpend&&typeof d.dailySpend==="object")     dailySpend=d.dailySpend;
-            localStorage.setItem("bd_tasks",      JSON.stringify(tasks));
-            localStorage.setItem("bd_recurring",  JSON.stringify(recurring));
-            localStorage.setItem("bd_expenses",   JSON.stringify(expenses));
+            if(d.budgetLimits && typeof d.budgetLimits==="object") budgetLimits=d.budgetLimits;
+            if(d.dailySpend   && typeof d.dailySpend==="object")   dailySpend=d.dailySpend;
+            localStorage.setItem("bd_tasks",        JSON.stringify(tasks));
+            localStorage.setItem("bd_recurring",    JSON.stringify(recurring));
+            localStorage.setItem("bd_expenses",     JSON.stringify(expenses));
             localStorage.setItem("bd_budget_limits",JSON.stringify(budgetLimits));
             localStorage.setItem("bd_daily_spend",  JSON.stringify(dailySpend));
-          }else{
-            // Local has data but cloud is empty — push local UP to cloud
-            console.log("Local data found, pushing to cloud:", expenses.length,"expenses");
+          } else {
+            // Local has data, cloud empty — push local up
+            console.log("Pushing local data to cloud:", expenses.length, "expenses");
             saveFb();
           }
-          render();renderRecurring();renderBudget();setSyncSt("synced ✓");
-        }else{
-          // No cloud doc yet — push all local data up
-          console.log("No cloud doc — pushing local data:", expenses.length,"expenses");
+          render(); renderRecurring(); renderBudget(); setSyncSt("synced ✓");
+        } else {
+          // No cloud doc yet — push local data up
+          console.log("No cloud doc, pushing:", expenses.length, "expenses");
           saveFb();
-          render();renderRecurring();renderBudget();setSyncSt("synced ✓");
+          render(); renderRecurring(); renderBudget(); setSyncSt("synced ✓");
         }
       },
       function(err){
-        console.error("Firestore:",err);
+        console.error("Firestore:", err);
         setSyncSt("offline");
-        render();renderRecurring();renderBudget();
+        render(); renderRecurring(); renderBudget();
       }
     );
   }
 
   function saveFb(){
-    if(!_fd||!_cu) return Promise.resolve();
-    setSyncSt("saving...",true);
+    if(!_fd || !_cu) return Promise.resolve();
+    setSyncSt("saving...", true);
     return _fd.collection("users").doc(_cu.uid).set({
-      tasks:tasks,recurring:recurring,expenses:expenses,
-      budgetLimits:budgetLimits,dailySpend:dailySpend,
-      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      tasks:tasks, recurring:recurring, expenses:expenses,
+      budgetLimits:budgetLimits, dailySpend:dailySpend,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(function(){
       setSyncSt("synced ✓");
     }).catch(function(e){
-      console.error("saveFb:",e);setSyncSt("sync failed");
+      console.error("saveFb:", e); setSyncSt("sync failed");
     });
   }
 
   function cloudSave(){
     if(!_cu) return;
-    clearTimeout(_st);setSyncSt("saving...",true);
-    _st=setTimeout(function(){saveFb();},1500);
+    clearTimeout(_st); setSyncSt("saving...", true);
+    _st = setTimeout(function(){ saveFb(); }, 1500);
   }
 
   function bootAuth(){
-    if(typeof firebase==="undefined"||!firebase.auth){
-      setTimeout(bootAuth,100);return;
-    }
+    if(typeof firebase==="undefined" || !firebase.auth){ setTimeout(bootAuth,100); return; }
     initFb();
   }
 
