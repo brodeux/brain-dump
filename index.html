@@ -1053,6 +1053,22 @@
   .daily-total-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:0.62rem;color:var(--text-muted)}
   .daily-total-val{color:var(--budget);font-family:'Instrument Serif',serif;font-style:italic;font-size:0.9rem}
   .daily-dow{font-size:0.5rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);text-align:center;padding-bottom:2px}
+
+  .day-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeDown 0.2s ease both}
+  .day-popup{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:20px;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,0.5)}
+  .day-popup-title{font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--budget);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .day-popup-title span{color:var(--text-dim);font-size:0.58rem}
+  .day-popup input,.day-popup select{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:0.78rem;padding:10px 12px;border-radius:9px;outline:none;margin-bottom:10px;transition:border-color 0.15s;display:block;color-scheme:dark}
+  .day-popup input:focus,.day-popup select:focus{border-color:var(--budget)}
+  .day-popup input::placeholder{color:var(--text-muted)}
+  .day-popup select option{background:#1a1a1f}
+  .day-popup-btns{display:flex;gap:8px;margin-top:4px}
+  .day-popup-save{flex:1;background:var(--budget);border:none;color:#1a0a02;font-family:'DM Mono',monospace;font-size:0.7rem;font-weight:500;letter-spacing:0.08em;padding:11px;border-radius:9px;cursor:pointer;transition:all 0.15s}
+  .day-popup-save:hover{filter:brightness(1.1)}
+  .day-popup-del{background:none;border:1px solid var(--border2);color:var(--text-muted);font-family:'DM Mono',monospace;font-size:0.7rem;padding:11px 14px;border-radius:9px;cursor:pointer;transition:all 0.15s}
+  .day-popup-del:hover{border-color:var(--red);color:var(--red)}
+  .day-popup-cancel{background:none;border:none;color:var(--text-muted);font-family:'DM Mono',monospace;font-size:0.62rem;cursor:pointer;padding:8px 0;text-align:center;width:100%;margin-top:2px;letter-spacing:0.06em}
+  .day-popup-cancel:hover{color:var(--text-dim)}
 </style>
 </head>
 <body>
@@ -2726,31 +2742,55 @@
   }
 
   function openDayInput(day) {
-    const amtEl = document.getElementById('damt-'+day);
-    if(!amtEl) return;
+    const ex = document.getElementById('day-popup-overlay'); if(ex) ex.remove();
     const key = budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    const cur = dailySpend[key]||0;
-    amtEl.innerHTML = `<input class="daily-input-inline" id="dinput-${day}" type="number" min="0" step="any" value="${cur||''}" placeholder="0" onclick="event.stopPropagation()" onblur="saveDayInput(${day})" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape')renderDailyGrid();" />`;
-    const inp = document.getElementById('dinput-'+day);
-    if(inp){inp.focus();inp.select();}
+    const entry = expenses.find(e => e.dailyKey === key);
+    const curVal=entry?entry.amount:(dailySpend[key]||''), curDesc=entry?entry.desc:'', curCat=entry?entry.cat:'other';
+    const cats='food,transport,utilities,health,shopping,entertainment,savings,salary,freelance,other'.split(',').map(c=>'<option value="'+c+'"'+(curCat===c?' selected':'')+'>'+c+'</option>').join('');
+    const dn=new Date(budgetYear,budgetMonth,day).toLocaleDateString('en-NG',{weekday:'short',day:'numeric',month:'short'});
+    const ov=document.createElement('div');
+    ov.id='day-popup-overlay'; ov.className='day-popup-overlay';
+    ov.innerHTML='<div class="day-popup" onclick="event.stopPropagation()">'
+      +'<div class="day-popup-title">'+dn+' <span>— daily spending</span></div>'
+      +'<input id="dpop-desc" type="text" placeholder="description (e.g. lunch, fuel)" maxlength="60" value="'+curDesc+'"/>'
+      +'<input id="dpop-amt" type="number" placeholder="amount" min="0" step="any" value="'+(curVal||'')+'"/>'
+      +'<select id="dpop-cat">'+cats+'</select>'
+      +'<div class="day-popup-btns">'
+        +'<button class="day-popup-save" onclick="saveDayPopup('+day+')">save</button>'
+        +(entry?'<button class="day-popup-del" onclick="deleteDayEntry('+day+')">delete</button>':'')
+      +'</div>'
+      +'<button class="day-popup-cancel" onclick="closeDayPopup()">cancel</button>'
+      +'</div>';
+    ov.onclick=closeDayPopup;
+    document.body.appendChild(ov);
+    const di=document.getElementById('dpop-desc'); if(di)di.focus();
+    ov.querySelectorAll('input').forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter')saveDayPopup(day);if(e.key==='Escape')closeDayPopup();}));
   }
 
-  function saveDayInput(day) {
-    const inp = document.getElementById('dinput-'+day);
-    if(!inp) return;
-    const val = parseFloat(inp.value);
-    const key = budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    expenses = expenses.filter(e => e.dailyKey !== key);
-    if(isNaN(val)||val<=0){
-      delete dailySpend[key];
-    }else{
-      dailySpend[key]=val;
-      expenses.push({id:'daily-'+key, desc:'Day '+day, cat:'other', amount:val, type:'expense',
-        month:budgetYear+'-'+String(budgetMonth+1).padStart(2,'0'),
-        date:new Date(budgetYear,budgetMonth,day).toISOString(), dailyKey:key});
-    }
-    save(); renderBudget();
+  function closeDayPopup(){const el=document.getElementById('day-popup-overlay');if(el)el.remove();}
+
+  function deleteDayEntry(day){
+    const key=budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    expenses=expenses.filter(e=>e.dailyKey!==key);
+    delete dailySpend[key];
+    save();closeDayPopup();renderBudget();
   }
+
+  function saveDayPopup(day){
+    const desc=(document.getElementById('dpop-desc')?.value||'').trim()||'Day '+day;
+    const val=parseFloat(document.getElementById('dpop-amt')?.value);
+    const cat=document.getElementById('dpop-cat')?.value||'other';
+    if(isNaN(val)||val<=0){closeDayPopup();return;}
+    const key=budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    expenses=expenses.filter(e=>e.dailyKey!==key);
+    dailySpend[key]=val;
+    expenses.push({id:'daily-'+key,desc,cat,amount:val,type:'expense',
+      month:budgetYear+'-'+String(budgetMonth+1).padStart(2,'0'),
+      date:new Date(budgetYear,budgetMonth,day).toISOString(),dailyKey:key});
+    save();closeDayPopup();renderBudget();
+  }
+
+  function saveDayInput(day){saveDayPopup(day);}
 </script>
 
 <!-- ── Install Banner (Android / Chrome) ── -->
