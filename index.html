@@ -1105,6 +1105,43 @@
   .day-add-cat option{background:#1a1a1f}
   .day-add-btn{flex-shrink:0;background:var(--budget);border:none;color:#1a0a02;font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:500;letter-spacing:0.06em;padding:9px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:filter 0.15s}
   .day-add-btn:hover{filter:brightness(1.1)}
+  /* ENTRIES FILTER + GROUPED LIST */
+  .entries-filter-bar{margin-bottom:16px;display:flex;flex-direction:column;gap:8px;animation:fadeDown 0.3s ease both}
+  .entries-search{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:0.76rem;padding:10px 13px;border-radius:10px;outline:none;transition:border-color 0.15s}
+  .entries-search:focus{border-color:var(--accent)}
+  .entries-search::placeholder{color:var(--text-muted)}
+  .entries-filter-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .entries-filter-select{flex:1;min-width:90px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:0.68rem;padding:7px 10px;border-radius:8px;outline:none;color-scheme:dark}
+  .entries-filter-select option{background:#1a1a1f}
+  .entries-filter-clear{background:none;border:1px solid var(--border2);color:var(--text-muted);font-family:"DM Mono",monospace;font-size:0.62rem;padding:7px 12px;border-radius:8px;cursor:pointer;letter-spacing:0.06em;transition:all 0.15s;white-space:nowrap}
+  .entries-filter-clear:hover{border-color:var(--red,#c05050);color:var(--red,#c05050)}
+  .day-group{margin-bottom:5px}
+  .day-group-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s;user-select:none}
+  .day-group-header:hover{border-color:var(--border2)}
+  .day-group-header.open{border-radius:10px 10px 0 0;border-bottom:1px solid transparent}
+  .day-group-left{display:flex;align-items:center;gap:10px}
+  .day-group-date{font-size:0.74rem;color:var(--text-dim)}
+  .day-group-count{font-size:0.58rem;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);padding:2px 7px;border-radius:20px}
+  .day-group-right{display:flex;align-items:center;gap:10px}
+  .day-group-total{font-family:"Instrument Serif",serif;font-style:italic;font-size:0.88rem;color:var(--budget)}
+  .day-group-chevron{font-size:0.72rem;color:var(--text-muted);transition:transform 0.2s;display:inline-block}
+  .day-group-header.open .day-group-chevron{transform:rotate(180deg)}
+  .day-group-items{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden;display:none}
+  .day-group-items.open{display:block}
+  .dgi-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--border);transition:background 0.1s}
+  .dgi-row:first-child{border-top:none}
+  .dgi-row:hover{background:var(--surface2)}
+  .dgi-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .dgi-body{flex:1;min-width:0}
+  .dgi-desc{font-size:0.78rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dgi-meta{font-size:0.58rem;color:var(--text-muted);margin-top:1px}
+  .dgi-amt{font-family:"Instrument Serif",serif;font-style:italic;font-size:0.9rem;flex-shrink:0}
+  .dgi-amt.inc{color:var(--recur)}
+  .dgi-amt.exp{color:#c05050}
+  .dgi-del{background:none;border:none;color:transparent;cursor:pointer;font-size:0.75rem;padding:2px 5px;border-radius:4px;transition:color 0.15s;flex-shrink:0}
+  .dgi-row:hover .dgi-del{color:var(--text-muted)}
+  .dgi-del:hover{color:#c05050!important}
+  .entries-empty{text-align:center;padding:24px;color:var(--text-muted);font-size:0.68rem;letter-spacing:0.06em}
 </style>
 </head>
 <body>
@@ -1399,25 +1436,33 @@
       </div>
     </div>
 
-    <!-- Expense list -->
-    <div class="expense-list" id="expense-list"></div>
-
-    <!-- Monthly summary table -->
-    <div class="monthly-summary" id="monthly-summary" style="display:none">
-      <div class="section-label">all entries</div>
-      <table class="summary-table">
-        <thead>
-          <tr>
-            <th>description</th>
-            <th>category</th>
-            <th>date</th>
-            <th style="text-align:right">amount</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="summary-tbody"></tbody>
-      </table>
+    <!-- Entries filter + grouped list -->
+    <div class="entries-filter-bar" id="entries-filter-bar" style="display:none">
+      <input class="entries-search" id="entries-search" type="text" placeholder="search description..." oninput="renderEntriesList()"/>
+      <div class="entries-filter-row">
+        <select class="entries-filter-select" id="filter-cat" onchange="renderEntriesList()">
+          <option value="">all categories</option>
+          <option value="food">food</option><option value="transport">transport</option>
+          <option value="utilities">utilities</option><option value="health">health</option>
+          <option value="shopping">shopping</option><option value="entertainment">entertainment</option>
+          <option value="savings">savings</option><option value="salary">salary</option>
+          <option value="freelance">freelance</option><option value="other">other</option>
+        </select>
+        <select class="entries-filter-select" id="filter-type" onchange="renderEntriesList()">
+          <option value="">all types</option>
+          <option value="expense">expense only</option>
+          <option value="income">income only</option>
+        </select>
+        <select class="entries-filter-select" id="filter-sort" onchange="renderEntriesList()">
+          <option value="date-desc">newest first</option>
+          <option value="date-asc">oldest first</option>
+          <option value="amt-desc">highest amount</option>
+          <option value="amt-asc">lowest amount</option>
+        </select>
+        <button class="entries-filter-clear" id="filter-clear" onclick="clearEntryFilters()" style="display:none">clear</button>
+      </div>
     </div>
+    <div class="expense-list" id="expense-list"></div>
 
     <!-- Analytics Overview -->
     <!-- Receipt upload zone -->
@@ -2011,68 +2056,13 @@
         </div>`).join('');
     } else catBreak.style.display='none';
 
-    // Expense list (recent 8)
-    const expList = document.getElementById('expense-list');
-    const sorted = [...entries].sort((a,b)=>new Date(b.date)-new Date(a.date));
-    const recent = sorted.slice(0,8);
-
-    if (!entries.length) {
-      expList.innerHTML = `<div class="empty"><div class="empty-icon">₦</div>no entries for ${MONTH_NAMES[budgetMonth]}<br>add your first income or expense above</div>`;
-    } else {
-      const catOptions = ['food','transport','utilities','health','shopping','entertainment','savings','salary','freelance','other']
-        .map(c=>`<option value="${c}">${c}</option>`).join('');
-
-      expList.innerHTML = recent.map(e => {
-        const isEditing = editingId==='e'+e.id;
-        const d = new Date(e.date);
-        const dateStr = `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0,3)}`;
-        return `
-          <div class="exp-item ${e.type} ${isEditing?'editing':''}">
-            <div class="exp-cat-dot" style="background:${CAT_COLORS[e.cat]||'#6b6875'}"></div>
-            <div class="exp-body">
-              <div class="exp-desc">${escHtml(e.desc)}</div>
-              <div class="exp-meta">${e.cat} · ${dateStr}</div>
-              <div class="exp-edit-area">
-                <input class="edit-input" id="eedit-desc-${e.id}" value="${escHtml(e.desc)}" maxlength="80"
-                  onkeydown="if(event.key==='Enter')saveEditExp(${e.id});if(event.key==='Escape')cancelEditExp();" />
-                <div class="edit-row">
-                  <input type="number" class="edit-input" id="eedit-amt-${e.id}" value="${e.amount}" min="0" step="any" style="width:110px" />
-                  <select class="edit-row" id="eedit-cat-${e.id}" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:0.72rem;padding:6px 10px;border-radius:7px;outline:none;color-scheme:dark;">
-                    ${['food','transport','utilities','health','shopping','entertainment','savings','salary','freelance','other'].map(c=>`<option value="${c}"${e.cat===c?' selected':''}>${c}</option>`).join('')}
-                  </select>
-                </div>
-                <div class="edit-actions">
-                  <button class="edit-save-btn" onclick="saveEditExp(${e.id})">save</button>
-                  <button class="edit-cancel-btn" onclick="cancelEditExp()">cancel</button>
-                </div>
-              </div>
-            </div>
-            <div class="exp-amount ${e.type}">${e.type==='expense'?'-':'+'} ${fmt(e.amount)}</div>
-            <div class="exp-actions">
-              <button class="icon-btn" style="opacity:1" onclick="startEditExp(${e.id})" title="edit">✎</button>
-              <button class="icon-btn del" style="opacity:1" onclick="deleteExpense(${e.id})" title="delete">✕</button>
-            </div>
-          </div>`;
-      }).join('');
-    }
-
-    // Summary table
-    const summaryEl = document.getElementById('monthly-summary');
-    const tbody = document.getElementById('summary-tbody');
-    if (entries.length) {
-      summaryEl.style.display='block';
-      tbody.innerHTML = sorted.map(e=>{
-        const d = new Date(e.date);
-        const dateStr = `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0,3)}`;
-        return `<tr>
-          <td>${escHtml(e.desc)}</td>
-          <td><div class="td-cat"><div style="width:6px;height:6px;border-radius:50%;background:${CAT_COLORS[e.cat]||'#6b6875'};flex-shrink:0"></div>${e.cat}</div></td>
-          <td class="td-date">${dateStr}</td>
-          <td style="text-align:right" class="${e.type==='income'?'td-income':'td-expense'}">${e.type==='expense'?'-':'+'} ${fmt(e.amount)}</td>
-          <td><button class="icon-btn del" style="opacity:0.4;font-size:0.7rem" onclick="deleteExpense(${e.id})">✕</button></td>
-        </tr>`;
-      }).join('');
-    } else summaryEl.style.display='none';
+    // Show filter bar when entries exist
+    var fb=document.getElementById("entries-filter-bar");
+    if(fb) fb.style.display=entries.length?"flex":"none";
+    renderEntriesList();
+    // Hide old summary table
+    var st=document.getElementById("monthly-summary");
+    if(st) st.style.display="none";
 
     renderAnalytics();
     renderDailyGrid();
@@ -2741,7 +2731,10 @@
     _st=setTimeout(()=>saveFb(),1500);
   }
 
-  function bootAuth(){initFb();}
+  function bootAuth(){
+    if(typeof firebase==="undefined"||!firebase.auth){setTimeout(bootAuth,100);return;}
+    initFb();
+  }
 
   document.addEventListener('DOMContentLoaded',()=>{
     ['signin-email','signin-password','signin-password2'].forEach(id=>{
@@ -2866,6 +2859,114 @@
   }
 
   function saveDayInput(day){openDayInput(day);}
+
+  /* GROUPED + FILTERED ENTRIES */
+  function renderEntriesList(){
+    var list=document.getElementById("expense-list");
+    if(!list) return;
+    var entries=monthExpenses();
+    if(!entries.length){list.innerHTML="<div class=\"entries-empty\">no entries for this month</div>";return;}
+    var search=(document.getElementById("entries-search")&&document.getElementById("entries-search").value||"").toLowerCase().trim();
+    var catF=document.getElementById("filter-cat")&&document.getElementById("filter-cat").value||"";
+    var typeF=document.getElementById("filter-type")&&document.getElementById("filter-type").value||"";
+    var sortF=document.getElementById("filter-sort")&&document.getElementById("filter-sort").value||"date-desc";
+    var clearBtn=document.getElementById("filter-clear");
+    if(clearBtn) clearBtn.style.display=(search||catF||typeF)?"block":"none";
+    var filtered=entries.filter(function(e){
+      if(catF&&e.cat!==catF) return false;
+      if(typeF&&e.type!==typeF) return false;
+      if(search&&!e.desc.toLowerCase().includes(search)) return false;
+      return true;
+    });
+    filtered.sort(function(a,b){
+      if(sortF==="date-asc")  return new Date(a.date)-new Date(b.date);
+      if(sortF==="amt-desc")  return b.amount-a.amount;
+      if(sortF==="amt-asc")   return a.amount-b.amount;
+      return new Date(b.date)-new Date(a.date);
+    });
+    if(!filtered.length){list.innerHTML="<div class=\"entries-empty\">no entries match filters</div>";return;}
+    var grouped=(sortF==="date-desc"||sortF==="date-asc");
+    if(!window._openGroups) window._openGroups={};
+    if(grouped){
+      var dayMap={},dayOrder=[];
+      filtered.forEach(function(e){
+        var dt=new Date(e.date);
+        var dk=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");
+        if(!dayMap[dk]){dayMap[dk]=[];dayOrder.push(dk);}
+        dayMap[dk].push(e);
+      });
+      var html="";
+      dayOrder.forEach(function(dk){
+        var de=dayMap[dk];
+        var dobj=new Date(dk+"T00:00:00");
+        var dstr=dobj.toLocaleDateString("en-NG",{weekday:"short",day:"numeric",month:"short"});
+        var tot=de.filter(function(e){return e.type==="expense";}).reduce(function(s,e){return s+e.amount;},0);
+        var inc=de.filter(function(e){return e.type==="income";}).reduce(function(s,e){return s+e.amount;},0);
+        var totStr=(tot>0?"-"+fmt(tot):"")+(inc>0?(tot>0?" · ":"")+("+"+fmt(inc)):"");
+        var isOpen=!!window._openGroups[dk];
+        var items=de.map(function(e){
+          var color=CAT_COLORS[e.cat]||"#6b6875";
+          var ac=e.type==="income"?"inc":"exp";
+          var as=(e.type==="expense"?"- ":"+ ")+fmt(e.amount);
+          return "<div class=\"dgi-row\">"
+            +"<div class=\"dgi-dot\" style=\"background:"+color+"\"></div>"
+            +"<div class=\"dgi-body\"><div class=\"dgi-desc\">"+escHtml(e.desc)+"</div>"
+            +"<div class=\"dgi-meta\">"+e.cat+"</div></div>"
+            +"<div class=\"dgi-amt "+ac+"\">"+as+"</div>"
+            +"<button class=\"dgi-del\" onclick=\"deleteExpense('"+e.id+"');event.stopPropagation()\">✕</button>"
+            +"</div>";
+        }).join("");
+        html+="<div class=\"day-group\">"
+          +"<div class=\"day-group-header"+(isOpen?" open":"")+"\"
+          +" onclick=\"toggleDayGroup('"+dk+"')\">"
+          +"<div class=\"day-group-left\">"
+          +"<div class=\"day-group-date\">"+dstr+"</div>"
+          +"<div class=\"day-group-count\">"+de.length+(de.length===1?" entry":" entries")+"</div>"
+          +"</div>"
+          +"<div class=\"day-group-right\">"
+          +"<div class=\"day-group-total\">"+totStr+"</div>"
+          +"<span class=\"day-group-chevron\">▾</span>"
+          +"</div></div>"
+          +"<div class=\"day-group-items"+(isOpen?" open":"")+"\"
+          +" id=\"dg-"+dk+"\">"+items+"</div>"
+          +"</div>";
+      });
+      list.innerHTML=html;
+    } else {
+      list.innerHTML=filtered.map(function(e){
+        var color=CAT_COLORS[e.cat]||"#6b6875";
+        var dt=new Date(e.date);
+        var ds=dt.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][dt.getMonth()];
+        var ac=e.type==="income"?"inc":"exp";
+        var as=(e.type==="expense"?"- ":"+ ")+fmt(e.amount);
+        return "<div class=\"dgi-row\" style=\"background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:5px\">"
+          +"<div class=\"dgi-dot\" style=\"background:"+color+"\"></div>"
+          +"<div class=\"dgi-body\"><div class=\"dgi-desc\">"+escHtml(e.desc)+"</div>"
+          +"<div class=\"dgi-meta\">"+e.cat+" · "+ds+"</div></div>"
+          +"<div class=\"dgi-amt "+ac+"\">"+as+"</div>"
+          +"<button class=\"dgi-del\" style=\"color:var(--text-muted)\" onclick=\"deleteExpense('"+e.id+"')\">✕</button>"
+          +"</div>";
+      }).join("");
+    }
+  }
+
+  function toggleDayGroup(dk){
+    if(!window._openGroups) window._openGroups={};
+    window._openGroups[dk]=!window._openGroups[dk];
+    var header=document.querySelector("[onclick=\"toggleDayGroup('"+dk+"')\""]");
+    var items=document.getElementById("dg-"+dk);
+    if(header) header.classList.toggle("open",window._openGroups[dk]);
+    if(items)  items.classList.toggle("open",window._openGroups[dk]);
+  }
+
+  function clearEntryFilters(){
+    var ids=["entries-search","filter-cat","filter-type","filter-sort"];
+    ids.forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.value=id==="filter-sort"?"date-desc":"";
+    });
+    renderEntriesList();
+  }
 </script>
 
 <!-- ── Install Banner (Android / Chrome) ── -->
