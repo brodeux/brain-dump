@@ -18,7 +18,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230d0d0f'/%3E%3Ctext x='256' y='340' font-size='280' text-anchor='middle' font-family='Georgia,serif' font-style='italic' fill='%237b68ee'%3Eb%3C/text%3E%3C/svg%3E">
 
 <!-- PWA Manifest (inline) -->
-<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22braindump.%22%2C%22short_name%22%3A%22braindump%22%2C%22description%22%3A%22Tasks%2C%20habits%2C%20and%20budget%20in%20one%20dark%20calm%20space%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0d0f%22%2C%22theme_color%22%3A%22%230d0d0f%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%2520viewBox%3D'0%25200%2520512%2520512'%253E%253Crect%2520width%3D'512'%2520height%3D'512'%2520rx%3D'100'%2520fill%3D'%25230d0d0f'%2F%253E%253Ctext%2520x%3D'256'%2520y%3D'340'%2520font-size%3D'280'%2520text-anchor%3D'middle'%2520font-family%3D'Georgia%2Cserif'%2520font-style%3D'italic'%2520fill%3D'%25237b68ee'%253Eb%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<link rel="manifest" href="/manifest.json">
 
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -2390,8 +2390,7 @@
 
   // Run immediately so there's no flash of wrong theme
   initTheme();
-  // Wait for Firebase SDKs to finish loading before booting auth
-  window.addEventListener('load', bootAuth);
+  if(document.readyState==='complete'){setTimeout(bootAuth,50);}else{window.addEventListener('load',function(){setTimeout(bootAuth,50);});}
 
   /* ================================
      SETTINGS / BACKUP & RESTORE
@@ -2635,16 +2634,13 @@
       _fb.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
         .catch(function(){})
         .finally(function(){
-          // Check for redirect result FIRST (handles Google sign-in on iOS PWA)
           _fb.getRedirectResult()
-            .then(function(result){
-              if(result&&result.user){
-                console.log("redirect sign-in complete:",result.user.email);
-              }
+            .then(function(res){
+              if(res&&res.user) console.log("redirect ok:",res.user.email);
             })
             .catch(function(e){
               if(e.code&&e.code!=="auth/no-auth-event"&&e.code!=="auth/operation-not-supported-in-this-environment"){
-                console.warn("getRedirectResult:",e.code);
+                console.warn("redirectResult:",e.code);
               }
             })
             .finally(function(){
@@ -2658,15 +2654,17 @@
   function onAuth(user){
     _cu=user;
     var bar=document.getElementById("user-bar");
-    var email=document.getElementById("user-bar-email");
+    var emailEl=document.getElementById("user-bar-email");
+    var syncEl=document.getElementById("user-bar-sync");
     if(user){
       hideSI();
       if(bar) bar.classList.add("visible");
-      if(email) email.textContent=user.email||user.displayName||"signed in";
-      setSyncSt("loading...",true);
+      if(emailEl) emailEl.textContent=user.email||user.displayName||"signed in";
+      if(syncEl){syncEl.textContent="loading...";syncEl.className="user-bar-sync syncing";}
       loadFb();
     }else{
       if(bar) bar.classList.remove("visible");
+      if(syncEl){syncEl.textContent="";syncEl.className="user-bar-sync";}
       showSI();
     }
   }
@@ -2703,13 +2701,13 @@
     if(!em||!pw){showSIErr("please enter email and password");return;}
     setSILoad(true);showSIErr("");
     var p=_sm==="signup"
-      ? (function(){
+      ?(function(){
           var pw2El=document.getElementById("signin-password2");
           var pw2=pw2El?pw2El.value:"";
           if(pw!==pw2){showSIErr("passwords do not match");setSILoad(false);return Promise.resolve();}
           return _fb.createUserWithEmailAndPassword(em,pw).then(function(){return saveFb();});
         })()
-      : _fb.signInWithEmailAndPassword(em,pw);
+      :_fb.signInWithEmailAndPassword(em,pw);
     p.catch(function(e){
       var msgs={"auth/user-not-found":"no account with this email","auth/wrong-password":"incorrect password",
         "auth/email-already-in-use":"email in use — try signing in","auth/weak-password":"password needs 6+ characters",
@@ -2722,18 +2720,18 @@
   function handleGoogleSignIn(){
     if(!_fb) return;
     var provider=new firebase.auth.GoogleAuthProvider();
-    var isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+    var isStandalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||window.navigator.standalone===true;
     var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
     var isSafari=/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    // Use redirect for iOS Safari and all standalone PWA installs
     if(isIOS||isSafari||isStandalone){
-      setSyncSt("redirecting...",true);
-      _fb.signInWithRedirect(provider).catch(function(e){showSIErr(e.message);setSyncSt("",false);});
-    } else {
+      var syncEl=document.getElementById("user-bar-sync");
+      if(syncEl){syncEl.textContent="redirecting...";syncEl.className="user-bar-sync syncing";}
+      _fb.signInWithRedirect(provider).catch(function(e){showSIErr(e.message);});
+    }else{
       _fb.signInWithPopup(provider).catch(function(e){
         if(e.code==="auth/popup-blocked"||e.code==="auth/cancelled-popup-request"){
           _fb.signInWithRedirect(provider);
-        } else if(e.code!=="auth/popup-closed-by-user"){
+        }else if(e.code!=="auth/popup-closed-by-user"){
           showSIErr(e.message);
         }
       });
@@ -2753,26 +2751,38 @@
   }
 
   function loadFb(){
-    if(!_fd||!_cu) return;
+    if(!_fd||!_cu){return;}
     setSyncSt("loading...",true);
     if(window._fbUnsub){window._fbUnsub();window._fbUnsub=null;}
     window._fbUnsub=_fd.collection("users").doc(_cu.uid).onSnapshot(
       function(doc){
         if(doc.exists){
           var d=doc.data();
-          if(Array.isArray(d.tasks))     tasks=d.tasks;
-          if(Array.isArray(d.recurring)) recurring=d.recurring;
-          if(Array.isArray(d.expenses))  expenses=d.expenses;
-          if(d.budgetLimits&&typeof d.budgetLimits==="object") budgetLimits=d.budgetLimits;
-          if(d.dailySpend&&typeof d.dailySpend==="object")     dailySpend=d.dailySpend;
-          localStorage.setItem("bd_tasks",      JSON.stringify(tasks));
-          localStorage.setItem("bd_recurring",  JSON.stringify(recurring));
-          localStorage.setItem("bd_expenses",   JSON.stringify(expenses));
-          localStorage.setItem("bd_budget_limits",JSON.stringify(budgetLimits));
-          localStorage.setItem("bd_daily_spend",  JSON.stringify(dailySpend));
+          var serverTime=d.updatedAt?d.updatedAt.toMillis():0;
+          // Only overwrite local if server has newer data OR local is empty
+          var localIsEmpty=(!expenses||expenses.length===0)&&(!tasks||tasks.length===0);
+          if(serverTime>0||localIsEmpty){
+            if(Array.isArray(d.tasks))     tasks=d.tasks;
+            if(Array.isArray(d.recurring)) recurring=d.recurring;
+            if(Array.isArray(d.expenses))  expenses=d.expenses;
+            if(d.budgetLimits&&typeof d.budgetLimits==="object") budgetLimits=d.budgetLimits;
+            if(d.dailySpend&&typeof d.dailySpend==="object")     dailySpend=d.dailySpend;
+            localStorage.setItem("bd_tasks",      JSON.stringify(tasks));
+            localStorage.setItem("bd_recurring",  JSON.stringify(recurring));
+            localStorage.setItem("bd_expenses",   JSON.stringify(expenses));
+            localStorage.setItem("bd_budget_limits",JSON.stringify(budgetLimits));
+            localStorage.setItem("bd_daily_spend",  JSON.stringify(dailySpend));
+          }else{
+            // Local has data but cloud is empty — push local UP to cloud
+            console.log("Local data found, pushing to cloud:", expenses.length,"expenses");
+            saveFb();
+          }
           render();renderRecurring();renderBudget();setSyncSt("synced ✓");
-        } else {
-          saveFb();render();renderRecurring();renderBudget();setSyncSt("synced ✓");
+        }else{
+          // No cloud doc yet — push all local data up
+          console.log("No cloud doc — pushing local data:", expenses.length,"expenses");
+          saveFb();
+          render();renderRecurring();renderBudget();setSyncSt("synced ✓");
         }
       },
       function(err){
@@ -2793,8 +2803,7 @@
     }).then(function(){
       setSyncSt("synced ✓");
     }).catch(function(e){
-      console.error("saveFb:",e);
-      setSyncSt("sync failed");
+      console.error("saveFb:",e);setSyncSt("sync failed");
     });
   }
 
@@ -2805,7 +2814,9 @@
   }
 
   function bootAuth(){
-    if(typeof firebase==="undefined"||!firebase.auth){setTimeout(bootAuth,100);return;}
+    if(typeof firebase==="undefined"||!firebase.auth){
+      setTimeout(bootAuth,100);return;
+    }
     initFb();
   }
 
