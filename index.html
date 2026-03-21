@@ -2318,7 +2318,8 @@
 
   // Run immediately so there's no flash of wrong theme
   initTheme();
-  bootAuth();
+  // Wait for Firebase SDKs to finish loading before booting auth
+  window.addEventListener('load', bootAuth);
 
   /* ════════════════════════════════
      SETTINGS / BACKUP & RESTORE
