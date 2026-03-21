@@ -2636,6 +2636,10 @@
       _fb.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
         .catch(function(){})
         .finally(function(){ _fb.onAuthStateChanged(onAuth); });
+      // Handle Google redirect sign-in result (iOS/Safari)
+      _fb.getRedirectResult().then(function(result){
+        if(result&&result.user) console.log('redirect sign-in ok:',result.user.email);
+      }).catch(function(e){if(e.code&&e.code!=='auth/no-auth-event')console.warn('redirectResult:',e.code);});
       return true;
     }catch(e){console.error('initFb:',e);return false;}
   }
@@ -2706,8 +2710,21 @@
 
   function handleGoogleSignIn(){
     if(!_fb) return;
-    _fb.signInWithPopup(new firebase.auth.GoogleAuthProvider())
-      .catch(function(e){if(e.code!=='auth/popup-closed-by-user')showSIErr(e.message);});
+    var provider=new firebase.auth.GoogleAuthProvider();
+    var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+    var isSafari=/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if(isIOS||isSafari){
+      // iOS/Safari block popups — use redirect instead
+      _fb.signInWithRedirect(provider).catch(function(e){showSIErr(e.message);});
+    } else {
+      _fb.signInWithPopup(provider).catch(function(e){
+        if(e.code==="auth/popup-blocked"||e.code==="auth/cancelled-popup-request"){
+          _fb.signInWithRedirect(provider);
+        } else if(e.code!=="auth/popup-closed-by-user"){
+          showSIErr(e.message);
+        }
+      });
+    }
   }
 
   function signOut(){
