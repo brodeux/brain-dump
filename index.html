@@ -1038,6 +1038,21 @@
   .fb-setup-title{font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px}
   .fb-setup textarea{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:0.65rem;padding:10px;border-radius:8px;outline:none;resize:vertical;min-height:80px;margin-bottom:8px}
   .fb-setup textarea:focus{border-color:var(--accent)}
+
+  .daily-budget-section{margin-bottom:24px;animation:fadeDown 0.4s 0.13s ease both}
+  .daily-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+  .daily-cell{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 4px 4px;text-align:center;transition:border-color 0.15s;cursor:pointer}
+  .daily-cell:hover{border-color:var(--border2)}
+  .daily-cell.today{border-color:var(--accent)}
+  .daily-cell.has-entry{background:var(--budget-bg);border-color:var(--budget-border)}
+  .daily-cell.future{opacity:0.35;cursor:default}
+  .daily-day-num{font-size:0.52rem;color:var(--text-muted);letter-spacing:0.04em;margin-bottom:3px}
+  .daily-cell.today .daily-day-num{color:var(--accent)}
+  .daily-amt{font-family:'Instrument Serif',serif;font-style:italic;font-size:0.72rem;color:var(--budget);line-height:1;min-height:14px}
+  .daily-input-inline{width:100%;background:none;border:none;outline:none;font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--text);text-align:center;padding:0;margin-top:2px}
+  .daily-total-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:0.62rem;color:var(--text-muted)}
+  .daily-total-val{color:var(--budget);font-family:'Instrument Serif',serif;font-style:italic;font-size:0.9rem}
+  .daily-dow{font-size:0.5rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);text-align:center;padding-bottom:2px}
 </style>
 </head>
 <body>
@@ -1288,6 +1303,18 @@
       <div class="bp-track"><div class="bp-fill" id="bp-fill" style="width:0%"></div></div>
     </div>
 
+
+    <div class="daily-budget-section" id="daily-budget-section">
+      <div class="section-label">daily spending</div>
+      <div class="daily-grid" id="daily-dow-row">
+        <div class="daily-dow">sun</div><div class="daily-dow">mon</div><div class="daily-dow">tue</div><div class="daily-dow">wed</div><div class="daily-dow">thu</div><div class="daily-dow">fri</div><div class="daily-dow">sat</div>
+      </div>
+      <div class="daily-grid" id="daily-grid"></div>
+      <div class="daily-total-row">
+        <span>total logged</span>
+        <span><span class="daily-total-val" id="daily-total">₦0</span> <span style="font-size:0.58rem;color:var(--text-muted);margin-left:6px" id="daily-avg">tap a day to log</span></span>
+      </div>
+    </div>
     <!-- Category breakdown -->
     <div class="category-breakdown" id="cat-breakdown" style="display:none">
       <div class="section-label">by category</div>
@@ -1409,6 +1436,7 @@
   let recurring = JSON.parse(localStorage.getItem('bd_recurring') || '[]');
   let expenses  = JSON.parse(localStorage.getItem('bd_expenses')  || '[]');
   let budgetLimits = JSON.parse(localStorage.getItem('bd_budget_limits') || '{}');
+  let dailySpend   = JSON.parse(localStorage.getItem('bd_daily_spend')   || '{}');
 
   let currentFilter = 'all';
   let currentTab    = 'tasks';
@@ -1435,6 +1463,7 @@
     localStorage.setItem('bd_recurring',  JSON.stringify(recurring));
     localStorage.setItem('bd_expenses',   JSON.stringify(expenses));
     localStorage.setItem('bd_budget_limits', JSON.stringify(budgetLimits));
+    localStorage.setItem('bd_daily_spend', JSON.stringify(dailySpend));
     cloudSave();
   }
 
@@ -1994,6 +2023,7 @@
     } else summaryEl.style.display='none';
 
     renderAnalytics();
+    renderDailyGrid();
   }
 
   /* ── Helpers ── */
@@ -2636,6 +2666,7 @@
         if(Array.isArray(d.recurring))recurring=d.recurring;
         if(Array.isArray(d.expenses))expenses=d.expenses;
         if(d.budgetLimits&&typeof d.budgetLimits==='object')budgetLimits=d.budgetLimits;
+        if(d.dailySpend&&typeof d.dailySpend==='object')dailySpend=d.dailySpend;
         save();render();renderRecurring();renderAnalytics();setSyncSt('synced ✓');
       }else{await saveFb();render();renderRecurring();renderAnalytics();setSyncSt('synced ✓');}
     }catch(e){console.error(e);setSyncSt('offline');render();renderRecurring();renderAnalytics();}
@@ -2644,7 +2675,7 @@
   async function saveFb(){
     if(!_fd||!_cu)return;setSyncSt('saving...',true);
     try{
-      await _fd.collection('users').doc(_cu.uid).set({tasks,recurring,expenses,budgetLimits,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      await _fd.collection('users').doc(_cu.uid).set({tasks,recurring,expenses,budgetLimits,dailySpend,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
       setSyncSt('synced ✓');
     }catch(e){console.error(e);setSyncSt('sync failed');}
   }
@@ -2662,6 +2693,53 @@
     });
   });
 
+  /* ═══ DAILY BUDGET GRID ═══ */
+  function renderDailyGrid() {
+    const grid = document.getElementById('daily-grid');
+    if (!grid) return;
+    const now = new Date();
+    const daysInMonth = new Date(budgetYear, budgetMonth+1, 0).getDate();
+    const firstDow = new Date(budgetYear, budgetMonth, 1).getDay();
+    const isCurrentMonth = now.getFullYear()===budgetYear && now.getMonth()===budgetMonth;
+    const todayDate = now.getDate();
+    let html = '', monthTotal = 0, daysLogged = 0;
+    for(let i=0;i<firstDow;i++) html += '<div></div>';
+    for(let day=1;day<=daysInMonth;day++){
+      const key = budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+      const val = dailySpend[key]||0;
+      const isFuture = isCurrentMonth && day>todayDate;
+      const isToday  = isCurrentMonth && day===todayDate;
+      if(val>0){monthTotal+=val;daysLogged++;}
+      const cls = ['daily-cell', isToday?'today':'', val>0?'has-entry':'', isFuture?'future':''].filter(Boolean).join(' ');
+      const onclick = isFuture ? '' : ` onclick="openDayInput(${day})"`;
+      html += `<div class="${cls}" id="dcell-${day}"${onclick}><div class="daily-day-num">${day}</div><div class="daily-amt" id="damt-${day}">${val>0?fmt(val):''}</div></div>`;
+    }
+    grid.innerHTML = html;
+    const te = document.getElementById('daily-total');
+    const ae = document.getElementById('daily-avg');
+    if(te) te.textContent = fmt(monthTotal);
+    if(ae) ae.textContent = daysLogged>0 ? 'avg '+fmt(Math.round(monthTotal/daysLogged))+'/day' : 'tap a day to log';
+  }
+
+  function openDayInput(day) {
+    const amtEl = document.getElementById('damt-'+day);
+    if(!amtEl) return;
+    const key = budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const cur = dailySpend[key]||0;
+    amtEl.innerHTML = `<input class="daily-input-inline" id="dinput-${day}" type="number" min="0" step="any" value="${cur||''}" placeholder="0" onclick="event.stopPropagation()" onblur="saveDayInput(${day})" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape')renderDailyGrid();" />`;
+    const inp = document.getElementById('dinput-'+day);
+    if(inp){inp.focus();inp.select();}
+  }
+
+  function saveDayInput(day) {
+    const inp = document.getElementById('dinput-'+day);
+    if(!inp) return;
+    const val = parseFloat(inp.value);
+    const key = budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    if(isNaN(val)||val<=0) delete dailySpend[key]; else dailySpend[key]=val;
+    save();
+    renderDailyGrid();
+  }
 </script>
 
 <!-- ── Install Banner (Android / Chrome) ── -->
