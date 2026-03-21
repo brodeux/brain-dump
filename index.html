@@ -2865,12 +2865,16 @@
     var list=document.getElementById("expense-list");
     if(!list) return;
     var entries=monthExpenses();
-    if(!entries.length){list.innerHTML="<div class=\"entries-empty\">no entries for this month</div>";return;}
-    var searchEl=document.getElementById("entries-search");var search=(searchEl?searchEl.value:"").toLowerCase().trim();
-    var catEl=document.getElementById("filter-cat");var catF=(catEl?catEl.value:"");
-    var typeEl=document.getElementById("filter-type");var typeF=(typeEl?typeEl.value:"");
-    var sortEl=document.getElementById("filter-sort");var sortF=(sortEl?sortEl.value:"date-desc");
+    if(!entries.length){list.innerHTML="<div class='entries-empty'>no entries for this month</div>";return;}
+    var searchEl=document.getElementById("entries-search");
+    var catEl=document.getElementById("filter-cat");
+    var typeEl=document.getElementById("filter-type");
+    var sortEl=document.getElementById("filter-sort");
     var clearBtn=document.getElementById("filter-clear");
+    var search=(searchEl?searchEl.value:"").toLowerCase().trim();
+    var catF=catEl?catEl.value:"";
+    var typeF=typeEl?typeEl.value:"";
+    var sortF=sortEl?sortEl.value:"date-desc";
     if(clearBtn) clearBtn.style.display=(search||catF||typeF)?"block":"none";
     var filtered=entries.filter(function(e){
       if(catF&&e.cat!==catF) return false;
@@ -2884,9 +2888,9 @@
       if(sortF==="amt-asc")   return a.amount-b.amount;
       return new Date(b.date)-new Date(a.date);
     });
-    if(!filtered.length){list.innerHTML="<div class=\"entries-empty\">no entries match filters</div>";return;}
-    var grouped=(sortF==="date-desc"||sortF==="date-asc");
+    if(!filtered.length){list.innerHTML="<div class='entries-empty'>no entries match filters</div>";return;}
     if(!window._openGroups) window._openGroups={};
+    var grouped=(sortF==="date-desc"||sortF==="date-asc");
     if(grouped){
       var dayMap={},dayOrder=[];
       filtered.forEach(function(e){
@@ -2902,49 +2906,51 @@
         var dstr=dobj.toLocaleDateString("en-NG",{weekday:"short",day:"numeric",month:"short"});
         var tot=de.filter(function(e){return e.type==="expense";}).reduce(function(s,e){return s+e.amount;},0);
         var inc=de.filter(function(e){return e.type==="income";}).reduce(function(s,e){return s+e.amount;},0);
-        var totStr=(tot>0?"-"+fmt(tot):"")+(inc>0?(tot>0?" · ":"")+("+"+fmt(inc)):"");
+        var totStr=(tot>0?"-"+fmt(tot):"")+(inc>0?(tot>0?" / ":"")+("+"+fmt(inc)):"");
         var isOpen=!!window._openGroups[dk];
+        var hcls="day-group-header"+(isOpen?" open":"");
+        var icls="day-group-items"+(isOpen?" open":"");
+        var eid=JSON.stringify(dk);
         var items=de.map(function(e){
-          var color=CAT_COLORS[e.cat]||"#6b6875";
+          var clr=CAT_COLORS[e.cat]||"#6b6875";
           var ac=e.type==="income"?"inc":"exp";
           var as=(e.type==="expense"?"- ":"+ ")+fmt(e.amount);
-          return "<div class=\"dgi-row\">"
-            +"<div class=\"dgi-dot\" style=\"background:"+color+"\"></div>"
-            +"<div class=\"dgi-body\"><div class=\"dgi-desc\">"+escHtml(e.desc)+"</div>"
-            +"<div class=\"dgi-meta\">"+e.cat+"</div></div>"
-            +"<div class=\"dgi-amt "+ac+"\">"+as+"</div>"
-            +"<button class=\"dgi-del\" onclick=\"deleteExpense('"+e.id+"');event.stopPropagation()\">✕</button>"
+          var eid2=JSON.stringify(e.id);
+          return "<div class='dgi-row'>"
+            +"<div class='dgi-dot' style='background:"+clr+"'></div>"
+            +"<div class='dgi-body'><div class='dgi-desc'>"+escHtml(e.desc)+"</div>"
+            +"<div class='dgi-meta'>"+e.cat+"</div></div>"
+            +"<div class='dgi-amt "+ac+"'>"+as+"</div>"
+            +"<button class='dgi-del' onclick='deleteExpense("+eid2+");event.stopPropagation()'>x</button>"
             +"</div>";
         }).join("");
-        html+="<div class=\"day-group\">"
-          +"<div class=\"day-group-header"+(isOpen?" open":"")+"\"
-          +" onclick=\"toggleDayGroup('"+dk+"')\">"
-          +"<div class=\"day-group-left\">"
-          +"<div class=\"day-group-date\">"+dstr+"</div>"
-          +"<div class=\"day-group-count\">"+de.length+(de.length===1?" entry":" entries")+"</div>"
+        html+="<div class='day-group'>"
+          +"<div class='"+hcls+"' onclick='toggleDayGroup("+eid+")'>"
+          +"<div class='day-group-left'>"
+          +"<div class='day-group-date'>"+dstr+"</div>"
+          +"<div class='day-group-count'>"+de.length+(de.length===1?" entry":" entries")+"</div>"
           +"</div>"
-          +"<div class=\"day-group-right\">"
-          +"<div class=\"day-group-total\">"+totStr+"</div>"
-          +"<span class=\"day-group-chevron\">▾</span>"
+          +"<div class='day-group-right'>"
+          +"<div class='day-group-total'>"+totStr+"</div>"
+          +"<span class='day-group-chevron'>v</span>"
           +"</div></div>"
-          +"<div class=\"day-group-items"+(isOpen?" open":"")+"\"
-          +" id=\"dg-"+dk+"\">"+items+"</div>"
+          +"<div class='"+icls+"' id='dg-"+dk+"'>"+items+"</div>"
           +"</div>";
       });
       list.innerHTML=html;
     } else {
       list.innerHTML=filtered.map(function(e){
-        var color=CAT_COLORS[e.cat]||"#6b6875";
+        var clr=CAT_COLORS[e.cat]||"#6b6875";
         var dt=new Date(e.date);
         var ds=dt.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][dt.getMonth()];
         var ac=e.type==="income"?"inc":"exp";
         var as=(e.type==="expense"?"- ":"+ ")+fmt(e.amount);
-        return "<div class=\"dgi-row\" style=\"background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:5px\">"
-          +"<div class=\"dgi-dot\" style=\"background:"+color+"\"></div>"
-          +"<div class=\"dgi-body\"><div class=\"dgi-desc\">"+escHtml(e.desc)+"</div>"
-          +"<div class=\"dgi-meta\">"+e.cat+" · "+ds+"</div></div>"
-          +"<div class=\"dgi-amt "+ac+"\">"+as+"</div>"
-          +"<button class=\"dgi-del\" style=\"color:var(--text-muted)\" onclick=\"deleteExpense('"+e.id+"')\">✕</button>"
+        return "<div class='dgi-row' style='background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:5px'>"
+          +"<div class='dgi-dot' style='background:"+clr+"'></div>"
+          +"<div class='dgi-body'><div class='dgi-desc'>"+escHtml(e.desc)+"</div>"
+          +"<div class='dgi-meta'>"+e.cat+" - "+ds+"</div></div>"
+          +"<div class='dgi-amt "+ac+"'>"+as+"</div>"
+          +"<button class='dgi-del' style='color:var(--text-muted)' onclick='deleteExpense("+JSON.stringify(e.id)+")'>x</button>"
           +"</div>";
       }).join("");
     }
@@ -2953,7 +2959,7 @@
   function toggleDayGroup(dk){
     if(!window._openGroups) window._openGroups={};
     window._openGroups[dk]=!window._openGroups[dk];
-    var header=document.querySelector("[onclick=\"toggleDayGroup('"+dk+"')\""]");
+    var header=document.querySelector("[onclick='toggleDayGroup("+JSON.stringify(dk)+")']");
     var items=document.getElementById("dg-"+dk);
     if(header) header.classList.toggle("open",window._openGroups[dk]);
     if(items)  items.classList.toggle("open",window._openGroups[dk]);
