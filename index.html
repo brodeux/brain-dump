@@ -2058,7 +2058,7 @@
 
     // Show filter bar when entries exist
     var fb=document.getElementById("entries-filter-bar");
-    if(fb) fb.style.display=entries.length?"flex":"none";
+    if(fb){fb.style.display=entries.length>0?"flex":"none";}
     renderEntriesList();
     // Hide old summary table
     var st=document.getElementById("monthly-summary");
@@ -2866,10 +2866,10 @@
     if(!list) return;
     var entries=monthExpenses();
     if(!entries.length){list.innerHTML="<div class=\"entries-empty\">no entries for this month</div>";return;}
-    var search=(document.getElementById("entries-search")&&document.getElementById("entries-search").value||"").toLowerCase().trim();
-    var catF=document.getElementById("filter-cat")&&document.getElementById("filter-cat").value||"";
-    var typeF=document.getElementById("filter-type")&&document.getElementById("filter-type").value||"";
-    var sortF=document.getElementById("filter-sort")&&document.getElementById("filter-sort").value||"date-desc";
+    var searchEl=document.getElementById("entries-search");var search=(searchEl?searchEl.value:"").toLowerCase().trim();
+    var catEl=document.getElementById("filter-cat");var catF=(catEl?catEl.value:"");
+    var typeEl=document.getElementById("filter-type");var typeF=(typeEl?typeEl.value:"");
+    var sortEl=document.getElementById("filter-sort");var sortF=(sortEl?sortEl.value:"date-desc");
     var clearBtn=document.getElementById("filter-clear");
     if(clearBtn) clearBtn.style.display=(search||catF||typeF)?"block":"none";
     var filtered=entries.filter(function(e){
