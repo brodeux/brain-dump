@@ -1054,23 +1054,40 @@
   .daily-total-val{color:var(--budget);font-family:'Instrument Serif',serif;font-style:italic;font-size:0.9rem}
   .daily-dow{font-size:0.5rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);text-align:center;padding-bottom:2px}
 
-  /* ═══ DAILY ENTRY POPUP ═══ */
+  /* DAILY ENTRY POPUP */
   .day-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:flex;align-items:flex-end;justify-content:center;animation:fadeDown 0.2s ease both}
   @media(min-width:600px){.day-popup-overlay{align-items:center;padding:20px}}
   .day-popup{background:var(--surface);border:1px solid var(--border2);border-radius:20px 20px 0 0;padding:20px 20px 32px;width:100%;max-width:440px;box-shadow:0 -8px 40px rgba(0,0,0,0.5);max-height:82vh;overflow-y:auto}
   @media(min-width:600px){.day-popup{border-radius:16px;padding:20px}}
   .day-popup-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
   .day-popup-title{font-size:0.55rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--budget);margin-bottom:2px}
-  .day-popup-date{font-family:'Instrument Serif',serif;font-style:italic;font-size:1.1rem;color:var(--text);line-height:1.2}
+  .day-popup-date{font-family:"Instrument Serif",serif;font-style:italic;font-size:1.1rem;color:var(--text);line-height:1.2}
   .day-popup-close{background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer;padding:2px 6px;border-radius:6px;transition:color 0.15s;flex-shrink:0}
   .day-popup-close:hover{color:var(--text)}
   .day-popup-total{font-size:0.6rem;color:var(--text-muted);margin:8px 0 12px;padding-bottom:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-  .day-popup-total-val{font-family:'Instrument Serif',serif;font-style:italic;font-size:1rem;color:var(--budget)}
+  .day-popup-total-val{font-family:"Instrument Serif",serif;font-style:italic;font-size:1rem;color:var(--budget)}
   .day-entries-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
   .day-entry-row{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;animation:slideIn 0.2s ease both}
   .day-entry-info{flex:1;min-width:0}
   .day-entry-desc{font-size:0.78rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .day-entry-meta{font-size:0.58rem;color:var(--text-muted);margin-top:2px}
+  .day-entry-amt{font-family:"Instrument Serif",serif;font-style:italic;font-size:0.95rem;color:var(--budget);flex-shrink:0}
+  .day-entry-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.82rem;padding:3px 6px;border-radius:4px;transition:color 0.15s;flex-shrink:0}
+  .day-entry-del:hover{color:var(--red)}
+  .day-entries-empty{font-size:0.65rem;color:var(--text-muted);text-align:center;padding:12px 0;letter-spacing:0.06em}
+  .day-add-form{background:var(--recur-bg);border:1px solid var(--recur-border);border-radius:12px;padding:14px;margin-top:2px}
+  .day-add-label{font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--recur);margin-bottom:10px}
+  .day-add-row{display:flex;gap:6px;flex-wrap:wrap}
+  .day-add-desc{flex:2;min-width:110px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:0.75rem;padding:9px 11px;border-radius:8px;outline:none;transition:border-color 0.15s}
+  .day-add-desc:focus{border-color:var(--budget)}
+  .day-add-desc::placeholder{color:var(--text-muted)}
+  .day-add-amt{width:100px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:0.75rem;padding:9px 11px;border-radius:8px;outline:none;transition:border-color 0.15s}
+  .day-add-amt:focus{border-color:var(--budget)}
+  .day-add-amt::placeholder{color:var(--text-muted)}
+  .day-add-cat{flex-shrink:0;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:"DM Mono",monospace;font-size:0.7rem;padding:9px 10px;border-radius:8px;outline:none;color-scheme:dark}
+  .day-add-cat option{background:#1a1a1f}
+  .day-add-btn{flex-shrink:0;background:var(--budget);border:none;color:#1a0a02;font-family:"DM Mono",monospace;font-size:0.68rem;font-weight:500;letter-spacing:0.06em;padding:9px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:filter 0.15s}
+  .day-add-btn:hover{filter:brightness(1.1)}:2px}
   .day-entry-amt{font-family:'Instrument Serif',serif;font-style:italic;font-size:0.95rem;color:var(--budget);flex-shrink:0}
   .day-entry-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.82rem;padding:3px 6px;border-radius:4px;transition:color 0.15s;flex-shrink:0}
   .day-entry-del:hover{color:var(--red)}
@@ -2760,66 +2777,90 @@
     if(ae) ae.textContent = daysLogged>0 ? 'avg '+fmt(Math.round(monthTotal/daysLogged))+'/day' : 'tap a day to log';
   }
 
-  function getDayKey(day){return budgetYear+'-'+String(budgetMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
+  function getDayKey(day){return budgetYear+"-"+String(budgetMonth+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");}
 
-  function getDayEntries(day){return expenses.filter(e=>e.dailyKey===getDayKey(day));}
+  function getDayEntries(day){return expenses.filter(function(e){return e.dailyKey===getDayKey(day);});}
+
+  function buildCatOptions(selCat){
+    var cats=["food","transport","utilities","health","shopping","entertainment","savings","salary","freelance","other"];
+    return cats.map(function(c){return "<option value=\""+c+"\""+( selCat===c?" selected":"")+">"+c+"</option>";}).join("");
+  }
 
   function renderDayPopup(day){
-    const key=getDayKey(day);
-    const entries=getDayEntries(day);
-    const total=entries.reduce((s,e)=>s+e.amount,0);
-    const dn=new Date(budgetYear,budgetMonth,day).toLocaleDateString('en-NG',{weekday:'long',day:'numeric',month:'long'});
-    const entriesHTML=entries.length
-      ? entries.map(e=>'<div class="day-entry-row"><div class="day-entry-info"><div class="day-entry-desc">'+escHtml(e.desc)+'</div><div class="day-entry-meta">'+e.cat+'</div></div><div class="day-entry-amt">'+fmt(e.amount)+'</div><button class="day-entry-del" onclick="deleteSingleDayEntry(''+e.id+'')">✕</button></div>').join('')
+    var key=getDayKey(day);
+    var entries=getDayEntries(day);
+    var total=entries.reduce(function(s,e){return s+e.amount;},0);
+    var dn=new Date(budgetYear,budgetMonth,day).toLocaleDateString("en-NG",{weekday:"long",day:"numeric",month:"long"});
+    var entriesHTML=entries.length
+      ? entries.map(function(e){
+          return '<div class="day-entry-row">'
+            +'<div class="day-entry-info">'
+            +'<div class="day-entry-desc">'+escHtml(e.desc)+'</div>'
+            +'<div class="day-entry-meta">'+e.cat+'</div>'
+            +'</div>'
+            +'<div class="day-entry-amt">'+fmt(e.amount)+'</div>'
+            +'<button class="day-entry-del" onclick="deleteSingleDayEntry(\''+(e.id)+'\')">✕</button>'
+            +'</div>';
+        }).join("")
       : '<div class="day-entries-empty">no entries yet — add one below</div>';
-    const catOpts='<option value="food">food</option><option value="transport">transport</option><option value="utilities">utilities</option><option value="health">health</option><option value="shopping">shopping</option><option value="entertainment">entertainment</option><option value="savings">savings</option><option value="salary">salary</option><option value="freelance">freelance</option><option value="other">other</option>';
-    let ov=document.getElementById('day-popup-overlay');
-    if(!ov){ov=document.createElement('div');ov.id='day-popup-overlay';ov.className='day-popup-overlay';document.body.appendChild(ov);}
-    ov.onclick=e=>{if(e.target===ov)closeDayPopup();};
+    var ov=document.getElementById("day-popup-overlay");
+    if(!ov){ov=document.createElement("div");ov.id="day-popup-overlay";ov.className="day-popup-overlay";document.body.appendChild(ov);}
+    ov.onclick=function(e){if(e.target===ov)closeDayPopup();};
     ov._day=day;
+    var totalBar=entries.length
+      ? '<div class="day-popup-total"><span>'+entries.length+' entr'+(entries.length===1?"y":"ies")+'</span><span class="day-popup-total-val">'+fmt(total)+'</span></div>'
+      : "";
     ov.innerHTML='<div class="day-popup" onclick="event.stopPropagation()">'
       +'<div class="day-popup-header"><div><div class="day-popup-title">daily spending</div><div class="day-popup-date">'+dn+'</div></div>'
       +'<button class="day-popup-close" onclick="closeDayPopup()">✕</button></div>'
-      +(entries.length?'<div class="day-popup-total"><span>'+entries.length+' entr'+(entries.length===1?'y':'ies')+'</span><span class="day-popup-total-val">'+fmt(total)+'</span></div>':'')
+      +totalBar
       +'<div class="day-entries-list">'+entriesHTML+'</div>'
       +'<div class="day-add-form"><div class="day-add-label">+ add entry</div>'
       +'<div class="day-add-row">'
-        +'<input class="day-add-desc" id="dadd-desc" type="text" placeholder="description" maxlength="60" autocomplete="off"/>'
-        +'<input class="day-add-amt" id="dadd-amt" type="number" placeholder="amount" min="0" step="any"/>'
-        +'<select class="day-add-cat" id="dadd-cat">'+catOpts+'</select>'
-        +'<button class="day-add-btn" onclick="addDayEntry('+day+')">add</button>'
+      +'<input class="day-add-desc" id="dadd-desc" type="text" placeholder="description" maxlength="60" autocomplete="off"/>'
+      +'<input class="day-add-amt" id="dadd-amt" type="number" placeholder="amount" min="0" step="any"/>'
+      +'<select class="day-add-cat" id="dadd-cat">'+buildCatOptions("other")+'</select>'
+      +'<button class="day-add-btn" onclick="addDayEntry('+day+')">add</button>'
       +'</div></div></div>';
-    const di=document.getElementById('dadd-desc');if(di)di.focus();
-    ['dadd-desc','dadd-amt'].forEach(id=>{
-      document.getElementById(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')addDayEntry(day);if(e.key==='Escape')closeDayPopup();});
+    var di=document.getElementById("dadd-desc");if(di)di.focus();
+    ["dadd-desc","dadd-amt"].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el)el.addEventListener("keydown",function(e){
+        if(e.key==="Enter")addDayEntry(day);
+        if(e.key==="Escape")closeDayPopup();
+      });
     });
   }
 
   function openDayInput(day){renderDayPopup(day);}
-  function closeDayPopup(){const el=document.getElementById('day-popup-overlay');if(el)el.remove();}
+  function closeDayPopup(){var el=document.getElementById("day-popup-overlay");if(el)el.remove();}
 
   function addDayEntry(day){
-    const desc=(document.getElementById('dadd-desc')?.value||'').trim()||'expense';
-    const val=parseFloat(document.getElementById('dadd-amt')?.value);
-    const cat=document.getElementById('dadd-cat')?.value||'other';
-    if(isNaN(val)||val<=0){const a=document.getElementById('dadd-amt');if(a){a.style.borderColor='var(--red)';setTimeout(()=>a.style.borderColor='',800);}return;}
-    const key=getDayKey(day);
-    expenses.push({id:'daily-'+key+'-'+Date.now(),desc,cat,amount:val,type:'expense',
-      month:budgetYear+'-'+String(budgetMonth+1).padStart(2,'0'),
+    var desc=(document.getElementById("dadd-desc")&&document.getElementById("dadd-desc").value||"").trim()||"expense";
+    var val=parseFloat(document.getElementById("dadd-amt")&&document.getElementById("dadd-amt").value);
+    var cat=(document.getElementById("dadd-cat")&&document.getElementById("dadd-cat").value)||"other";
+    if(isNaN(val)||val<=0){
+      var a=document.getElementById("dadd-amt");
+      if(a){a.style.borderColor="var(--red)";setTimeout(function(){a.style.borderColor="";},800);}
+      return;
+    }
+    var key=getDayKey(day);
+    expenses.push({id:"daily-"+key+"-"+Date.now(),desc:desc,cat:cat,amount:val,type:"expense",
+      month:budgetYear+"-"+String(budgetMonth+1).padStart(2,"0"),
       date:new Date(budgetYear,budgetMonth,day).toISOString(),dailyKey:key});
-    dailySpend[key]=getDayEntries(day).reduce((s,e)=>s+e.amount,0);
+    dailySpend[key]=getDayEntries(day).reduce(function(s,e){return s+e.amount;},0);
     save();renderDayPopup(day);renderDailyGrid();renderBudget();
   }
 
   function deleteSingleDayEntry(id){
-    const entry=expenses.find(e=>e.id===id);
-    expenses=expenses.filter(e=>e.id!==id);
-    if(entry?.dailyKey){
-      const t=expenses.filter(e=>e.dailyKey===entry.dailyKey).reduce((s,e)=>s+e.amount,0);
+    var entry=expenses.find(function(e){return e.id===id;});
+    expenses=expenses.filter(function(e){return e.id!==id;});
+    if(entry&&entry.dailyKey){
+      var t=expenses.filter(function(e){return e.dailyKey===entry.dailyKey;}).reduce(function(s,e){return s+e.amount;},0);
       if(t>0)dailySpend[entry.dailyKey]=t; else delete dailySpend[entry.dailyKey];
     }
     save();
-    const ov=document.getElementById('day-popup-overlay');
+    var ov=document.getElementById("day-popup-overlay");
     if(ov&&ov._day!==undefined)renderDayPopup(ov._day);
     renderDailyGrid();renderBudget();
   }
