@@ -2673,8 +2673,9 @@
     var emailEl = document.getElementById("user-bar-email");
     var syncEl = document.getElementById("user-bar-sync");
     if(user){
-      _signingIn = false;
       hideSI();
+      // Keep _signingIn true briefly to block any spurious onAuth(null) after sign-in
+      setTimeout(function(){ _signingIn = false; }, 3000);
       if(bar) bar.classList.add("visible");
       if(emailEl) emailEl.textContent = user.email || user.displayName || "signed in";
       if(syncEl){ syncEl.textContent = "loading..."; syncEl.className = "user-bar-sync syncing"; }
@@ -2725,6 +2726,8 @@
     var pw = pwEl ? pwEl.value : "";
     if(!em || !pw){ showSIErr("please enter email and password"); return; }
     setSILoad(true); showSIErr(""); _signingIn = true;
+    clearTimeout(window._siTimeout);
+    window._siTimeout = setTimeout(function(){ _signingIn = false; }, 10000);
     var p = _sm==="signup"
       ? (function(){
           var pw2El=document.getElementById("signin-password2");
@@ -2754,6 +2757,9 @@
     var isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent);
     var isSafari  = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     _signingIn = true;
+    // Safety: reset signingIn after 10s if auth never completes
+    clearTimeout(window._siTimeout);
+    window._siTimeout = setTimeout(function(){ _signingIn = false; }, 10000);
     if(isIOS || isSafari || isStandalone){
       var syncEl=document.getElementById("user-bar-sync");
       if(syncEl){ syncEl.textContent="redirecting..."; syncEl.className="user-bar-sync syncing"; }
