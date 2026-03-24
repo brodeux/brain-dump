@@ -2630,41 +2630,52 @@
   var _authReady = false; // true once getRedirectResult has resolved
   var _authFired  = false; // true once onAuthStateChanged fires at least once
 
-  var _authGrace = true;  // Suppress showSI for 4s after load to prevent flicker
+  var _authGrace = true;  // Controlled by initFb - suppresses showSI until auth resolves
   var _signingIn = false; // True while sign-in/signup is in progress
-  setTimeout(function(){ _authGrace = false; if(!_cu) showSI(); }, 4000);
 
   function initFb(){
     try{
-      // Only delete if there are existing apps (prevents errors)
-      try{ firebase.apps.forEach(function(a){a.delete().catch(function(){});}); }catch(e){}
-      // Use fixed app name so auth token persists across sessions
-      _fa = firebase.initializeApp(_FBCFG, "braindump");
-      _fb = _fa.auth();
-      _fd = _fa.firestore();
+      if(_fa){try{_fa.delete();}catch(e){}}
+      _fa=firebase.initializeApp(_FBCFG,"bd"+Date.now());
+      _fb=_fa.auth();
+      _fd=_fa.firestore();
+      // Mark that we are waiting for redirect result
+      // This prevents showSI() from firing while redirect is pending
+      // If redirect was pending from previous page, be extra patient
+      var redirectPending=false;
+      try{ redirectPending=sessionStorage.getItem("bd_redirect_pending")==="1"; sessionStorage.removeItem("bd_redirect_pending"); }catch(e){}
+      _authGrace=true;
       _fb.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
         .catch(function(){})
         .finally(function(){
-          // Check redirect result FIRST, THEN attach auth listener
           _fb.getRedirectResult()
             .then(function(res){
-              if(res && res.user){
-                console.log("Google redirect sign-in:", res.user.email);
+              if(res&&res.user){
+                // Google redirect sign-in succeeded
+                console.log("Google redirect OK:",res.user.email);
+                _signingIn=false;
+                // onAuthStateChanged will fire with user shortly
               }
             })
             .catch(function(e){
-              if(e.code && e.code !== "auth/no-auth-event" &&
-                 e.code !== "auth/operation-not-supported-in-this-environment"){
-                console.warn("redirectResult:", e.code);
+              if(e.code&&e.code!=="auth/no-auth-event"&&e.code!=="auth/operation-not-supported-in-this-environment"){
+                console.warn("redirectResult:",e.code);
               }
             })
             .finally(function(){
-              _authReady = true;
+              _authReady=true;
+              // Attach auth listener AFTER redirect result resolves
               _fb.onAuthStateChanged(onAuth);
+              // Now safe to allow showSI if truly signed out
+              // Give onAuthStateChanged 1 extra second to fire
+              setTimeout(function(){
+                _authGrace=false;
+                if(!_cu&&!_signingIn) showSI();
+              },1000);
             });
         });
       return true;
-    }catch(e){ console.error("initFb:", e); return false; }
+    }catch(e){console.error("initFb:",e);_authGrace=false;return false;}
   }
 
   function onAuth(user){
@@ -2757,10 +2768,12 @@
     var isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent);
     var isSafari  = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     _signingIn = true;
-    // Safety: reset signingIn after 10s if auth never completes
     clearTimeout(window._siTimeout);
     window._siTimeout = setTimeout(function(){ _signingIn = false; }, 10000);
     if(isIOS || isSafari || isStandalone){
+      // Flag that a redirect is in progress so the new page load stays patient
+      try{ sessionStorage.setItem("bd_redirect_pending","1"); }catch(e){}
+      // Show loading indicator
       var syncEl=document.getElementById("user-bar-sync");
       if(syncEl){ syncEl.textContent="redirecting..."; syncEl.className="user-bar-sync syncing"; }
       _fb.signInWithRedirect(provider).catch(function(e){ showSIErr(e.message); });
