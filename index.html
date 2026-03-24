@@ -2390,6 +2390,8 @@
 
   // Run immediately so there's no flash of wrong theme
   initTheme();
+  // Remove old config-based auth (was causing conflicts)
+  localStorage.removeItem('bd_fb_cfg');
   if(document.readyState==='complete'){setTimeout(bootAuth,50);}else{window.addEventListener('load',function(){setTimeout(bootAuth,50);});}
 
   /* ================================
@@ -2626,13 +2628,14 @@
   let _fa=null,_fb=null,_fd=null,_cu=null,_si=false,_sm='signin',_st=null;
 
   var _authReady = false; // true once getRedirectResult has resolved
-  var _authGrace = true;  // suppress showSI for 3s after load
-  setTimeout(function(){ _authGrace = false; }, 3000);
+  var _authFired  = false; // true once onAuthStateChanged fires at least once
 
   function initFb(){
     try{
-      if(_fa){try{_fa.delete();}catch(e){}}
-      _fa = firebase.initializeApp(_FBCFG, "bd"+Date.now());
+      // Only delete if there are existing apps (prevents errors)
+      try{ firebase.apps.forEach(function(a){a.delete().catch(function(){});}); }catch(e){}
+      // Use fixed app name so auth token persists across sessions
+      _fa = firebase.initializeApp(_FBCFG, "braindump");
       _fb = _fa.auth();
       _fd = _fa.firestore();
       _fb.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
@@ -2661,6 +2664,7 @@
   }
 
   function onAuth(user){
+    _authFired = true;
     _cu = user;
     var bar    = document.getElementById("user-bar");
     var emailEl= document.getElementById("user-bar-email");
@@ -2676,14 +2680,14 @@
       // User is signed out — only show sign-in if auth is ready and grace period over
       if(bar) bar.classList.remove("visible");
       if(syncEl){ syncEl.textContent = ""; syncEl.className = "user-bar-sync"; }
-      if(_authReady && !_authGrace){
+      // Only show sign-in after auth has fully resolved
+      if(_authReady){
         showSI();
-      }
-      // If still in grace period, set a check for when it ends
-      if(_authGrace){
-        setTimeout(function(){
-          if(!_cu) showSI();
-        }, 3100);
+      } else {
+        // Auth not ready yet - wait for it then show
+        var _waitForAuth = setInterval(function(){
+          if(_authReady){ clearInterval(_waitForAuth); if(!_cu) showSI(); }
+        }, 100);
       }
     }
   }
