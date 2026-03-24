@@ -2630,6 +2630,10 @@
   var _authReady = false; // true once getRedirectResult has resolved
   var _authFired  = false; // true once onAuthStateChanged fires at least once
 
+  var _authGrace = true;  // Suppress showSI for 4s after load to prevent flicker
+  var _signingIn = false; // True while sign-in/signup is in progress
+  setTimeout(function(){ _authGrace = false; if(!_cu) showSI(); }, 4000);
+
   function initFb(){
     try{
       // Only delete if there are existing apps (prevents errors)
@@ -2664,30 +2668,24 @@
   }
 
   function onAuth(user){
-    _authFired = true;
     _cu = user;
-    var bar    = document.getElementById("user-bar");
-    var emailEl= document.getElementById("user-bar-email");
+    var bar = document.getElementById("user-bar");
+    var emailEl = document.getElementById("user-bar-email");
     var syncEl = document.getElementById("user-bar-sync");
     if(user){
-      // User is signed in
+      _signingIn = false;
       hideSI();
-      if(bar)     bar.classList.add("visible");
+      if(bar) bar.classList.add("visible");
       if(emailEl) emailEl.textContent = user.email || user.displayName || "signed in";
       if(syncEl){ syncEl.textContent = "loading..."; syncEl.className = "user-bar-sync syncing"; }
       loadFb();
     } else {
-      // User is signed out — only show sign-in if auth is ready and grace period over
       if(bar) bar.classList.remove("visible");
       if(syncEl){ syncEl.textContent = ""; syncEl.className = "user-bar-sync"; }
-      // Only show sign-in after auth has fully resolved
-      if(_authReady){
+      // Only show sign-in screen if we are definitely signed out
+      // (not during grace period, not mid sign-in)
+      if(!_authGrace && !_signingIn){
         showSI();
-      } else {
-        // Auth not ready yet - wait for it then show
-        var _waitForAuth = setInterval(function(){
-          if(_authReady){ clearInterval(_waitForAuth); if(!_cu) showSI(); }
-        }, 100);
       }
     }
   }
@@ -2726,7 +2724,7 @@
     var em = emEl ? emEl.value.trim() : "";
     var pw = pwEl ? pwEl.value : "";
     if(!em || !pw){ showSIErr("please enter email and password"); return; }
-    setSILoad(true); showSIErr("");
+    setSILoad(true); showSIErr(""); _signingIn = true;
     var p = _sm==="signup"
       ? (function(){
           var pw2El=document.getElementById("signin-password2");
@@ -2745,7 +2743,7 @@
         "auth/too-many-requests":     "too many attempts — try later",
         "auth/invalid-credential":    "incorrect email or password"
       };
-      showSIErr(msgs[e.code] || e.message); setSILoad(false);
+      showSIErr(msgs[e.code] || e.message); setSILoad(false); _signingIn = false;
     });
   }
 
@@ -2755,6 +2753,7 @@
     var isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
     var isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent);
     var isSafari  = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    _signingIn = true;
     if(isIOS || isSafari || isStandalone){
       var syncEl=document.getElementById("user-bar-sync");
       if(syncEl){ syncEl.textContent="redirecting..."; syncEl.className="user-bar-sync syncing"; }
