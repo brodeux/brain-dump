@@ -2641,9 +2641,6 @@
       _fd=_fa.firestore();
       // Mark that we are waiting for redirect result
       // This prevents showSI() from firing while redirect is pending
-      // If redirect was pending from previous page, be extra patient
-      var redirectPending=false;
-      try{ redirectPending=sessionStorage.getItem("bd_redirect_pending")==="1"; sessionStorage.removeItem("bd_redirect_pending"); }catch(e){}
       _authGrace=true;
       _fb.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
         .catch(function(){})
@@ -2762,30 +2759,36 @@
   }
 
   function handleGoogleSignIn(){
-    if(!_fb) return;
-    var provider = new firebase.auth.GoogleAuthProvider();
-    var isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
-    var isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    var isSafari  = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if(!_fb || window._googlePopupOpen) return;
+    window._googlePopupOpen = true;
     _signingIn = true;
     clearTimeout(window._siTimeout);
-    window._siTimeout = setTimeout(function(){ _signingIn = false; }, 10000);
-    if(isIOS || isSafari || isStandalone){
-      // Flag that a redirect is in progress so the new page load stays patient
-      try{ sessionStorage.setItem("bd_redirect_pending","1"); }catch(e){}
-      // Show loading indicator
-      var syncEl=document.getElementById("user-bar-sync");
-      if(syncEl){ syncEl.textContent="redirecting..."; syncEl.className="user-bar-sync syncing"; }
-      _fb.signInWithRedirect(provider).catch(function(e){ showSIErr(e.message); });
-    } else {
-      _fb.signInWithPopup(provider).catch(function(e){
-        if(e.code==="auth/popup-blocked" || e.code==="auth/cancelled-popup-request"){
-          _fb.signInWithRedirect(provider);
-        } else if(e.code !== "auth/popup-closed-by-user"){
-          showSIErr(e.message);
+    window._siTimeout = setTimeout(function(){ _signingIn=false; window._googlePopupOpen=false; },30000);
+    var provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope("email");
+    provider.addScope("profile");
+    _fb.signInWithPopup(provider)
+      .then(function(result){
+        window._googlePopupOpen = false;
+        clearTimeout(window._siTimeout);
+        // onAuth(user) will fire automatically
+      })
+      .catch(function(e){
+        window._googlePopupOpen = false;
+        _signingIn = false;
+        clearTimeout(window._siTimeout);
+        if(e.code === "auth/popup-blocked" || e.code === "auth/cancelled-popup-request"){
+          // Popup was blocked - show helpful message
+          showSIErr("Pop-up blocked. Please allow pop-ups or use email/password sign-in.");
+        } else if(e.code === "auth/popup-closed-by-user"){
+          // User closed popup - do nothing
+        } else if(e.code === "auth/operation-not-supported-in-this-environment"){
+          // PWA/Safari doesn't support popup - show message
+          showSIErr("Google sign-in not supported here. Please use email/password.");
+        } else {
+          showSIErr(e.message || "Google sign-in failed. Try email/password.");
         }
       });
-    }
   }
 
   function signOut(){
